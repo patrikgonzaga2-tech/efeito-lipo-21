@@ -281,7 +281,7 @@ export function Hook() {
           <p>
             Com SOP, 15 quilos a mais, treinando todo dia e piorando — até que eu descobri que
             o problema nunca foi o meu esforço. Foi a <strong>inflamação travando tudo</strong>.
-            Quando eu mudei a ordem, em 23 dias 8 quilos foram embora. Olha com os seus
+            Quando eu mudei a ordem, em 21 dias 8 quilos foram embora. Olha com os seus
             próprios olhos 👇
           </p>
         </div>
@@ -428,7 +428,7 @@ export function Bio() {
             </p>
             <p>
               Quando eu mudei a ordem — desinchar antes de treinar — o meu corpo respondeu. 8
-              quilos em 23 dias. A calça que não fechava há dois anos estava larga.
+              quilos em 21 dias. A calça que não fechava há dois anos estava larga.
             </p>
             <p>
               Aí eu testei com as minhas seguidoras. Com 30 anos, com 45, com filho, sem
