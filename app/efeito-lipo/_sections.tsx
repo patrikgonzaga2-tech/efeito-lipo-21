@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Script from 'next/script'
 import { useReveal } from '@/hooks/use-reveal'
 
-const CHECKOUT_HREF = 'https://pay.hotmart.com/M100707979H?off=wp53y95s'
+const CHECKOUT_HREF = 'https://pay.hotmart.com/M100707979H?off=p6mtqk4g&checkoutMode=10'
 
 const IMG = {
   hero:        { src: '/images/hero-laura.jpg',                                                                       w: 1080, h: 1080 },
