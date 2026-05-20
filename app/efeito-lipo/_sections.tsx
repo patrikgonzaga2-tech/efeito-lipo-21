@@ -1,26 +1,27 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import Script from 'next/script'
 import { useReveal } from '@/hooks/use-reveal'
 
 const CHECKOUT_HREF = 'https://pay.hotmart.com/M100707979H?off=wp53y95s'
 
 const IMG = {
-  hero: '/images/hero-laura.jpg',
-  antesDepois: '/images/Antes%20e%20Depois%20Laura.jpeg',
-  camila: '/images/Depoimento%20Camila%2030%20anos%2C%20m%C3%A3e%20de%202%20e%20confeitera.jpeg',
-  suhene: '/images/Depoimento%20Suhene%2043%20anos%20m%C3%A3e.jpeg',
-  isabela: '/images/Depoimento%20Isabela%20-%20M%C3%A3e.jpg',
-  evelyn: '/images/Depoimento%202%20Evelyn%20M%C3%A3e.jpg',
-  priscila: '/images/Depoimento%20Priscila%20Resultado%20em%207%20dias.jpg',
-  gabriela34: '/images/Depoimento%20Gabriela%2034%20anos%20m%C3%A3e%20e%20trabalha%20fora%20de%20casa.jpeg',
-  gilmara: '/images/Depoimento%20Gilmara%20m%C3%A3e%20de%203%20e%20v%C3%B3%20com%20neto%20de%205%20anos.jpg',
-  gabriela27: '/images/Depoimento%20Gabriela%2027%20anos%20com%20filho%20autista.jpeg',
-  suelen: '/images/Depoimento%20Suelen%2035%20anos%20m%C3%A3e%20e%20enfermeira%20noturna.jpg',
-  thais: '/images/Depoimento%20Thais%2034%20anos.jpg',
-  celia: '/images/Depoimento%20C%C3%A9lia%2030%20anos.jpg',
-  pamela: '/images/Depoimento%20Pamela%20M%C3%A3e.jpg',
+  hero:        { src: '/images/hero-laura.jpg',                                                                       w: 1080, h: 1080 },
+  antesDepois: { src: '/images/Antes%20e%20Depois%20Laura.jpeg',                                                      w: 1080, h: 1080 },
+  camila:      { src: '/images/Depoimento%20Camila%2030%20anos%2C%20m%C3%A3e%20de%202%20e%20confeitera.jpeg',         w: 1288, h: 1600 },
+  suhene:      { src: '/images/Depoimento%20Suhene%2043%20anos%20m%C3%A3e.jpeg',                                      w: 1080, h: 1080 },
+  isabela:     { src: '/images/Depoimento%20Isabela%20-%20M%C3%A3e.jpg',                                              w: 1170, h: 1012 },
+  evelyn:      { src: '/images/Depoimento%202%20Evelyn%20M%C3%A3e.jpg',                                               w: 1080, h: 1080 },
+  priscila:    { src: '/images/Depoimento%20Priscila%20Resultado%20em%207%20dias.jpg',                                w: 1290, h: 1274 },
+  gabriela34:  { src: '/images/Depoimento%20Gabriela%2034%20anos%20m%C3%A3e%20e%20trabalha%20fora%20de%20casa.jpeg',  w: 1200, h: 1600 },
+  gilmara:     { src: '/images/Depoimento%20Gilmara%20m%C3%A3e%20de%203%20e%20v%C3%B3%20com%20neto%20de%205%20anos.jpg', w: 1290, h: 1292 },
+  gabriela27:  { src: '/images/Depoimento%20Gabriela%2027%20anos%20com%20filho%20autista.jpeg',                       w: 1200, h: 1600 },
+  suelen:      { src: '/images/Depoimento%20Suelen%2035%20anos%20m%C3%A3e%20e%20enfermeira%20noturna.jpg',            w: 844,  h: 1600 },
+  thais:       { src: '/images/Depoimento%20Thais%2034%20anos.jpg',                                                   w: 1281, h: 1619 },
+  celia:       { src: '/images/Depoimento%20C%C3%A9lia%2030%20anos.jpg',                                              w: 1290, h: 1348 },
+  pamela:      { src: '/images/Depoimento%20Pamela%20M%C3%A3e.jpg',                                                   w: 1080, h: 1080 },
 }
 
 // Botão pill padrão (cor de ação)
@@ -73,6 +74,85 @@ function CtaPill({
 }
 
 // ────────────────────────────────────────────────────────────────────
+// LazyVSL — carrega o player vturb só no clique (poupa ~7 MB no LCP)
+// ────────────────────────────────────────────────────────────────────
+function LazyVSL() {
+  const [loaded, setLoaded] = useState(false)
+
+  return (
+    <div
+      className="relative w-full rounded-2xl overflow-hidden"
+      style={{
+        aspectRatio: '16 / 9',
+        background: 'linear-gradient(135deg, var(--gd) 0%, var(--ink) 100%)',
+        boxShadow: '0 12px 48px rgba(0,0,0,0.35)',
+      }}
+    >
+      {loaded ? (
+        <>
+          <vturb-smartplayer
+            id="ab-6a073e90f38f377fba3ca511"
+            style={{ display: 'block', margin: '0 auto', width: '100%', height: '100%' }}
+            aria-label="Vídeo de apresentação do Efeito Lipo 21"
+            role="region"
+          />
+          <Script
+            src="https://scripts.converteai.net/9406f62d-bd68-44a6-971a-c0a91bdff3c8/ab-test/6a073e90f38f377fba3ca511/player.js"
+            strategy="afterInteractive"
+          />
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setLoaded(true)}
+          aria-label="Reproduzir vídeo de apresentação do Efeito Lipo 21"
+          className="absolute inset-0 w-full h-full flex flex-col items-center justify-center transition-all duration-300 hover:brightness-110 group"
+          style={{ cursor: 'pointer', background: 'transparent' }}
+        >
+          {/* Botão play */}
+          <div
+            className="flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
+            style={{
+              width: 'clamp(64px, 11vw, 88px)',
+              height: 'clamp(64px, 11vw, 88px)',
+              borderRadius: '50%',
+              background: 'var(--o)',
+              boxShadow: '0 8px 32px rgba(245,113,0,0.5)',
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="#000"
+              width="38%"
+              height="38%"
+              style={{ marginLeft: '8%' }}
+              aria-hidden="true"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+
+          {/* Label */}
+          <div
+            className="font-display mt-5"
+            style={{
+              color: '#fff',
+              fontSize: 'clamp(13px,1.5vw,15px)',
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              fontWeight: 700,
+            }}
+          >
+            Assista agora
+          </div>
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────
 // BLOCO 1 — HERO (fundo escuro, sem logo, sem menu)
 // ────────────────────────────────────────────────────────────────────
 export function Hero() {
@@ -108,7 +188,7 @@ export function Hero() {
         }}
       >
         <h1
-          className="reveal font-display mb-6 max-w-[900px]"
+          className="font-display mb-6 max-w-[900px]"
           style={{
             fontSize: 'clamp(32px,5.4vw,68px)',
             fontWeight: 800,
@@ -136,23 +216,9 @@ export function Hero() {
           afinar os braços (e que a maioria das nutricionistas e personais nunca vão te contar).
         </p>
 
-        {/* VSL — vturb smartplayer */}
-        <div
-          className="reveal reveal-d2 mb-8 sm:mb-10 w-full"
-          style={{ maxWidth: 720 }}
-        >
-          <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 12px 48px rgba(0,0,0,0.35)' }}>
-            <vturb-smartplayer
-              id="ab-6a073e90f38f377fba3ca511"
-              style={{ display: 'block', margin: '0 auto', width: '100%' }}
-              aria-label="Vídeo de apresentação do Efeito Lipo 21"
-              role="region"
-            />
-          </div>
-          <Script
-            src="https://scripts.converteai.net/9406f62d-bd68-44a6-971a-c0a91bdff3c8/ab-test/6a073e90f38f377fba3ca511/player.js"
-            strategy="afterInteractive"
-          />
+        {/* VSL — lazy click-to-load */}
+        <div className="reveal reveal-d2 mb-8 sm:mb-10 w-full" style={{ maxWidth: 720 }}>
+          <LazyVSL />
         </div>
 
         <div className="reveal reveal-d3">
@@ -224,11 +290,12 @@ export function Hook() {
           className="reveal reveal-d2 mt-10 mx-auto"
           style={{ maxWidth: 600, borderRadius: 20, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.10)' }}
         >
-          <img
-            src={IMG.hero}
+          <Image
+            src={IMG.hero.src}
+            width={IMG.hero.w}
+            height={IMG.hero.h}
+            sizes="(min-width: 640px) 600px, 92vw"
             alt="Laüra Rosa — antes e depois"
-            loading="lazy"
-            decoding="async"
             className="w-full h-auto block"
           />
         </div>
@@ -241,9 +308,9 @@ export function Hook() {
 // BLOCO 3 — PROVA ADICIONAL (fundo creme, grid 3 colunas)
 // ────────────────────────────────────────────────────────────────────
 const provaCards = [
-  { src: IMG.camila, alt: 'Camila, 30 anos, mãe e confeiteira' },
-  { src: IMG.suhene, alt: 'Suhene, 43 anos, mãe' },
-  { src: IMG.isabela, alt: 'Isabela, mãe' },
+  { ...IMG.camila,  alt: 'Camila, 30 anos, mãe e confeiteira' },
+  { ...IMG.suhene,  alt: 'Suhene, 43 anos, mãe' },
+  { ...IMG.isabela, alt: 'Isabela, mãe' },
 ]
 
 export function ProvaAdicional() {
@@ -286,11 +353,12 @@ export function ProvaAdicional() {
                 background: '#fff',
               }}
             >
-              <img
+              <Image
                 src={c.src}
+                width={c.w}
+                height={c.h}
+                sizes="(min-width: 1024px) 340px, (min-width: 640px) 48vw, 92vw"
                 alt={c.alt}
-                loading="lazy"
-                decoding="async"
                 className="block w-full h-auto"
               />
             </div>
@@ -327,11 +395,12 @@ export function Bio() {
             className="reveal mx-auto lg:mx-0 w-full"
             style={{ maxWidth: 360, borderRadius: 20, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.10)' }}
           >
-            <img
-              src={IMG.antesDepois}
+            <Image
+              src={IMG.antesDepois.src}
+              width={IMG.antesDepois.w}
+              height={IMG.antesDepois.h}
+              sizes="(min-width: 1024px) 360px, 92vw"
               alt="Laüra Rosa — antes e depois"
-              loading="lazy"
-              decoding="async"
               className="w-full h-auto block"
             />
           </div>
@@ -704,11 +773,12 @@ export function Metodo() {
           className="reveal reveal-d3 mx-auto mb-10"
           style={{ maxWidth: 480, borderRadius: 20, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.30)' }}
         >
-          <img
-            src={IMG.evelyn}
+          <Image
+            src={IMG.evelyn.src}
+            width={IMG.evelyn.w}
+            height={IMG.evelyn.h}
+            sizes="(min-width: 640px) 480px, 92vw"
             alt="Depoimento Evelyn — Mãe"
-            loading="lazy"
-            decoding="async"
             className="w-full h-auto block"
           />
         </div>
@@ -727,14 +797,14 @@ export function Metodo() {
 // BLOCO 7 — PROVA SOCIAL DE VOLUME (fundo branco, grid 2 colunas)
 // ────────────────────────────────────────────────────────────────────
 const galeria = [
-  { src: IMG.priscila, alt: 'Priscila — resultado em 7 dias' },
-  { src: IMG.gabriela34, alt: 'Gabriela, 34 anos, mãe e trabalha fora de casa' },
-  { src: IMG.gilmara, alt: 'Gilmara, mãe de 3 e vó com neto de 5 anos' },
-  { src: IMG.gabriela27, alt: 'Gabriela, 27 anos, com filho autista' },
-  { src: IMG.suelen, alt: 'Suelen, 35 anos, mãe e enfermeira noturna' },
-  { src: IMG.thais, alt: 'Thais, 34 anos' },
-  { src: IMG.celia, alt: 'Célia, 30 anos' },
-  { src: IMG.pamela, alt: 'Pamela, mãe' },
+  { ...IMG.priscila,   alt: 'Priscila — resultado em 7 dias' },
+  { ...IMG.gabriela34, alt: 'Gabriela, 34 anos, mãe e trabalha fora de casa' },
+  { ...IMG.gilmara,    alt: 'Gilmara, mãe de 3 e vó com neto de 5 anos' },
+  { ...IMG.gabriela27, alt: 'Gabriela, 27 anos, com filho autista' },
+  { ...IMG.suelen,     alt: 'Suelen, 35 anos, mãe e enfermeira noturna' },
+  { ...IMG.thais,      alt: 'Thais, 34 anos' },
+  { ...IMG.celia,      alt: 'Célia, 30 anos' },
+  { ...IMG.pamela,     alt: 'Pamela, mãe' },
 ]
 
 export function ProvaSocial() {
@@ -795,11 +865,12 @@ export function ProvaSocial() {
                 background: '#fff',
               }}
             >
-              <img
+              <Image
                 src={img.src}
+                width={img.w}
+                height={img.h}
+                sizes="(min-width: 640px) 520px, 92vw"
                 alt={img.alt}
-                loading="lazy"
-                decoding="async"
                 className="block w-full h-auto"
               />
             </div>
