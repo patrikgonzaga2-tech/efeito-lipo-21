@@ -896,7 +896,7 @@ const bonusList = [
     ],
   },
   {
-    nome: 'Bônus 2 — Protocolo Anti-Bananinha',
+    nome: 'Bônus 2 — Protocolo Anti-Pelanquinha',
     de: 'R$ 147',
     para: 'Grátis',
     paragrafos: [
@@ -910,7 +910,7 @@ const bonusList = [
 const stackItens = [
   { nome: 'Efeito Lipo 21 (aplicativo completo)', valor: 'R$ 297' },
   { nome: 'Queima Hormonal', valor: 'R$ 197' },
-  { nome: 'Protocolo Anti-Bananinha', valor: 'R$ 147' },
+  { nome: 'Protocolo Anti-Pelanquinha', valor: 'R$ 147' },
 ]
 
 export function Bonus() {
