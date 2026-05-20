@@ -9,6 +9,7 @@ const CHECKOUT_HREF = 'https://pay.hotmart.com/M100707979H?off=p6mtqk4g&checkout
 
 const IMG = {
   hero:        { src: '/images/hero-laura.jpg',                                                                       w: 1080, h: 1080 },
+  vslPoster:   { src: '/images/vsl-poster.jpg',                                                                       w: 1920, h: 1080 },
   antesDepois: { src: '/images/Antes%20e%20Depois%20Laura.jpeg',                                                      w: 1080, h: 1080 },
   camila:      { src: '/images/Depoimento%20Camila%2030%20anos%2C%20m%C3%A3e%20de%202%20e%20confeitera.jpeg',         w: 1288, h: 1600 },
   suhene:      { src: '/images/Depoimento%20Suhene%2043%20anos%20m%C3%A3e.jpeg',                                      w: 1080, h: 1080 },
@@ -84,7 +85,7 @@ function LazyVSL() {
       className="relative w-full rounded-2xl overflow-hidden"
       style={{
         aspectRatio: '16 / 9',
-        background: 'linear-gradient(135deg, var(--gd) 0%, var(--ink) 100%)',
+        background: 'var(--ink)',
         boxShadow: '0 12px 48px rgba(0,0,0,0.35)',
       }}
     >
@@ -106,12 +107,29 @@ function LazyVSL() {
           type="button"
           onClick={() => setLoaded(true)}
           aria-label="Reproduzir vídeo de apresentação do Efeito Lipo 21"
-          className="absolute inset-0 w-full h-full flex flex-col items-center justify-center transition-all duration-300 hover:brightness-110 group"
-          style={{ cursor: 'pointer', background: 'transparent' }}
+          className="absolute inset-0 w-full h-full flex flex-col items-center justify-center transition-all duration-300 group"
+          style={{ cursor: 'pointer', background: 'transparent', padding: 0, border: 0 }}
         >
+          {/* Thumbnail do vídeo */}
+          <Image
+            src={IMG.vslPoster.src}
+            alt=""
+            fill
+            sizes="(min-width: 720px) 720px, 92vw"
+            priority
+            className="object-cover"
+          />
+
+          {/* Escurecimento sutil pra dar contraste ao botão */}
+          <div
+            className="absolute inset-0 transition-opacity duration-300 group-hover:opacity-70"
+            style={{ background: 'rgba(0,0,0,0.35)' }}
+            aria-hidden="true"
+          />
+
           {/* Botão play */}
           <div
-            className="flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
+            className="relative z-10 flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
             style={{
               width: 'clamp(64px, 11vw, 88px)',
               height: 'clamp(64px, 11vw, 88px)',
@@ -135,13 +153,14 @@ function LazyVSL() {
 
           {/* Label */}
           <div
-            className="font-display mt-5"
+            className="relative z-10 font-display mt-5"
             style={{
               color: '#fff',
               fontSize: 'clamp(13px,1.5vw,15px)',
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
               fontWeight: 700,
+              textShadow: '0 2px 8px rgba(0,0,0,0.6)',
             }}
           >
             Assista agora
