@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Script from 'next/script'
 import { useReveal } from '@/hooks/use-reveal'
 
-const CHECKOUT_HREF = 'https://pay.hotmart.com/M100707979H?off=p6mtqk4g&checkoutMode=10'
+const CHECKOUT_HREF = 'https://pay.hotmart.com/J105938667T?checkoutMode=10'
 
 const IMG = {
   hero:        { src: '/images/hero-laura.jpg',                                                                       w: 1080, h: 1080 },
@@ -1141,7 +1141,7 @@ export function Oferta() {
             letterSpacing: '-0.02em',
           }}
         >
-          6x de R$ 8,82
+          5x de R$ 8,19
         </div>
         <div
           className="reveal reveal-d1 mt-1 mb-8"
