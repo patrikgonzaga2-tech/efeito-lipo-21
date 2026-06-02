@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Script from 'next/script'
+import { usePathname } from 'next/navigation'
 import { useReveal } from '@/hooks/use-reveal'
 
 const CHECKOUT_HREF = 'https://pay.hotmart.com/J105938667T?checkoutMode=10'
 
 const IMG = {
   hero:        { src: '/images/hero-laura.jpg',                                                                       w: 1080, h: 1080 },
+  lauraBarriga:{ src: '/images/Foto-Laura-Barriga-hero.png',                                                          w: 1080, h: 1320 },
   vslPoster:   { src: '/images/vsl-poster.jpg',                                                                       w: 1920, h: 1080 },
   antesDepois: { src: '/images/Antes%20e%20Depois%20Laura.jpeg',                                                      w: 1080, h: 1080 },
   camila:      { src: '/images/Depoimento%20Camila%2030%20anos%2C%20m%C3%A3e%20de%202%20e%20confeitera.jpeg',         w: 1288, h: 1600 },
@@ -48,9 +50,21 @@ function CtaPill({
       ? '0 8px 32px rgba(0,72,17,0.3)'
       : '0 8px 40px rgba(245,113,0,0.35)'
 
+  // Identifica a variante pela URL (/efeito-lipo-a ou /efeito-lipo-b) e
+  // repassa no checkout: `variante` (rastreio próprio) e `sck` (código de
+  // rastreio nativo da Hotmart, que aparece no relatório de vendas).
+  const pathname = usePathname()
+  const variante =
+    pathname === '/efeito-lipo-a' || pathname === '/efeito-lipo-b'
+      ? pathname.slice(1)
+      : null
+  const href = variante
+    ? `${CHECKOUT_HREF}&variante=${variante}&sck=${variante}`
+    : CHECKOUT_HREF
+
   return (
     <a
-      href={CHECKOUT_HREF}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={ariaLabel || 'Garantir minha vaga no Efeito Lipo 21'}
@@ -248,6 +262,107 @@ export function Hero() {
 
         <div
           className="reveal reveal-d4 mt-5"
+          style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.04em' }}
+        >
+          Acesso imediato · Pagamento 100% seguro
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────
+// BLOCO 1B — HERO VARIANTE B (sem VSL, com foto da Laura abaixo do botão)
+// ────────────────────────────────────────────────────────────────────
+export function HeroB() {
+  useReveal()
+
+  return (
+    <section
+      className="relative overflow-hidden"
+      style={{ background: 'var(--gd)' }}
+      aria-label="Efeito Lipo 21"
+    >
+      {/* Blobs decorativos */}
+      <svg
+        className="blob-float1 absolute pointer-events-none will-change-transform"
+        style={{ top: '-20%', right: '-15%', width: 'min(700px,90vw)', height: 'min(700px,90vw)' }}
+        viewBox="0 0 400 400"
+      >
+        <path d="M60,20 C120,-20 220,10 280,60 C340,110 380,180 360,260 C340,340 260,390 180,380 C100,370 20,320 10,240 C0,160 0,60 60,20Z" fill="rgba(245,113,0,0.18)" />
+      </svg>
+      <svg
+        className="blob-float2 absolute pointer-events-none will-change-transform"
+        style={{ bottom: '-10%', left: '-10%', width: 'min(500px,70vw)', height: 'min(500px,70vw)' }}
+        viewBox="0 0 300 300"
+      >
+        <path d="M40,10 C90,-15 170,5 210,50 C250,95 270,160 240,210 C210,260 140,280 80,260 C20,240 -10,170 5,110 C20,50 -10,35 40,10Z" fill="rgba(28,135,60,0.25)" />
+      </svg>
+
+      <div
+        className="relative z-10 w-full max-w-[1080px] mx-auto px-5 sm:px-8 md:px-12 lg:px-20 grid grid-cols-1 md:grid-cols-[3fr_2fr] md:gap-x-12 lg:gap-x-20 md:items-center text-center md:text-left"
+        style={{
+          paddingTop: 'clamp(56px,8vw,96px)',
+          paddingBottom: 'clamp(48px,6vw,80px)',
+        }}
+      >
+        <h1
+          className="font-display mb-6 max-w-[900px] mx-auto md:mx-0 md:col-start-1 md:row-start-1 md:!text-[32px] lg:!text-[clamp(40px,3.4vw,52px)]"
+          style={{
+            fontSize: 'clamp(32px,5.4vw,68px)',
+            fontWeight: 800,
+            lineHeight: 1.05,
+            letterSpacing: '-0.025em',
+            color: '#fff',
+          }}
+        >
+          Em apenas 21 dias, perca até 8KG{' '}
+          <span style={{ color: 'var(--o)' }}>secando a barriga e afinando os braços</span> —
+          em casa e sem as canetinhas caras!
+        </h1>
+
+        <p
+          className="reveal reveal-d1 mb-8 sm:mb-10 mx-auto md:mx-0 md:col-start-1 md:row-start-2"
+          style={{
+            fontSize: 'clamp(17px,2.2vw,20px)',
+            lineHeight: 1.65,
+            color: 'rgba(255,255,255,0.78)',
+            maxWidth: 720,
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          O mesmo segredo que as blogueiras e atrizes estão usando pra secar a barriga e
+          afinar os braços (e que a maioria das nutricionistas e personais nunca vão te contar).
+        </p>
+
+        {/* Foto da Laura — acima do botão no mobile, à direita no desktop/iPad */}
+        <div
+          className="reveal reveal-d2 w-full max-w-[300px] md:max-w-[360px] mx-auto md:col-start-2 md:row-start-1 md:row-span-4 md:self-center"
+          style={{
+            borderRadius: 20,
+            overflow: 'hidden',
+            boxShadow: '0 12px 48px rgba(0,0,0,0.35)',
+          }}
+        >
+          <Image
+            src={IMG.lauraBarriga.src}
+            width={IMG.lauraBarriga.w}
+            height={IMG.lauraBarriga.h}
+            sizes="(min-width: 768px) 360px, 80vw"
+            alt="Laüra Rosa, criadora do Efeito Lipo 21"
+            priority
+            className="w-full h-auto block"
+          />
+        </div>
+
+        <div className="reveal reveal-d3 mt-8 sm:mt-10 md:mt-0 md:col-start-1 md:row-start-3">
+          <CtaPill size="lg" ariaLabel="Quero ativar o Efeito Lipo">
+            Quero ativar o Efeito Lipo
+          </CtaPill>
+        </div>
+
+        <div
+          className="reveal reveal-d4 mt-5 md:col-start-1 md:row-start-4"
           style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.04em' }}
         >
           Acesso imediato · Pagamento 100% seguro

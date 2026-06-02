@@ -11,7 +11,7 @@ import {
   Oferta,
   Garantia,
   FooterLipo,
-} from './_sections'
+} from '../efeito-lipo/_sections'
 
 export const metadata = {
   title: 'Efeito Lipo 21 — Laüra Rosa',
