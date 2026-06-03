@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { AVATARS, REGION_AVATARS } from './_data'
 import type { BodyVariant, Opt, RegionKey } from './_data'
 
 // ── Hooks ───────────────────────────────────────────────────────────
@@ -124,30 +125,29 @@ export function CtaButton({
   )
 }
 
-// ── Silhuetas (ilustrações de corpo) ────────────────────────────────
-function RegionHi({ region }: { region: RegionKey }) {
-  const fill = 'rgba(245,113,0,.55)'
-  if (region === 'none') return null
-  if (region === 'full') return <rect x="22" y="6" width="56" height="150" rx="26" fill="rgba(245,113,0,.22)" className="q-floaty" />
-  const shapes: Record<Exclude<RegionKey, 'none' | 'full'>, ReactNode> = {
-    belly: <ellipse cx="50" cy="80" rx="15" ry="12" fill={fill} />,
-    arms: <><ellipse cx="29" cy="68" rx="6" ry="17" fill={fill} /><ellipse cx="71" cy="68" rx="6" ry="17" fill={fill} /></>,
-    waist: <ellipse cx="50" cy="74" rx="22" ry="8" fill={fill} />,
-    hips: <ellipse cx="50" cy="104" rx="20" ry="14" fill={fill} />,
-  }
-  return <g className="q-floaty">{shapes[region as Exclude<RegionKey, 'none' | 'full'>]}</g>
-}
-
-export function Body({ variant = 'soft', highlight, size = 88, color }: { variant?: BodyVariant; highlight?: RegionKey; size?: number; color?: string }) {
-  const scale = { lean: 0.82, soft: 1, over: 1.18, much: 1.34 }[variant]
+// ── Avatares 3D (mesma mulher) ──────────────────────────────────────
+// Tela de corpo: passa `variant` (corpo). Tela de região: passa `region`
+// e usa a imagem com a parte do corpo já marcada (anel + brilho laranja).
+export function Avatar({ variant = 'soft', region, size = 120, selected }: {
+  variant?: BodyVariant; region?: RegionKey; size?: number; selected?: boolean
+}) {
+  const src = region ? REGION_AVATARS[region] : AVATARS[variant]
   return (
-    <svg viewBox="0 0 100 160" width={size} height={size * 1.6} aria-hidden style={{ display: 'block' }}>
-      <g transform={`translate(50 0) scale(${scale} 1) translate(-50 0)`} fill={color || 'currentColor'}>
-        <circle cx="50" cy="20" r="13" />
-        <path d="M50 35 C39 35 32 42 32 55 C32 67 37 74 37 86 C31 104 30 128 36 150 L45 150 C43 130 47 112 50 106 C53 112 57 130 55 150 L64 150 C70 128 69 104 63 86 C63 74 68 67 68 55 C68 42 61 35 50 35 Z" />
-      </g>
-      {highlight && <RegionHi region={highlight} />}
-    </svg>
+    <div style={{ position: 'relative', height: size, display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      {selected && (
+        <span aria-hidden style={{
+          position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)',
+          width: '116%', height: '96%', borderRadius: '44% 44% 30% 30%',
+          background: 'radial-gradient(60% 65% at 50% 42%, rgba(245,113,0,.16), rgba(245,113,0,0) 72%)',
+        }} />
+      )}
+      <img src={src} alt="" draggable={false} style={{
+        height: size, width: 'auto', display: 'block', position: 'relative',
+        transition: 'filter .25s var(--ease-out), transform .25s var(--ease-out)',
+        transform: selected ? 'scale(1.04)' : 'scale(1)',
+        filter: selected ? 'drop-shadow(0 8px 16px rgba(245,113,0,.30))' : 'drop-shadow(0 5px 12px rgba(0,0,0,.12))',
+      }} />
+    </div>
   )
 }
 
@@ -191,8 +191,8 @@ export function OptionCard({
   if (layout === 'body') {
     return (
       <button type="button" onClick={onClick} className="q-in flex flex-col items-center text-center rounded-2xl p-4 active:scale-[.97]" style={base}>
-        <div className="grid place-items-center mb-2" style={{ height: 132, color: selected ? 'var(--o)' : 'rgba(0,0,0,.32)', transition: 'color .25s' }}>
-          <Body variant={opt.body} size={76} />
+        <div className="grid place-items-center mb-2" style={{ height: 138 }}>
+          <Avatar variant={opt.body} size={132} selected={selected} />
         </div>
         <div className="font-display" style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--ink)', lineHeight: 1.25 }}>{opt.label}</div>
         {opt.sub && <div style={{ fontSize: 12.5, color: 'var(--sub)', marginTop: 4, lineHeight: 1.35 }}>{opt.sub}</div>}
@@ -203,8 +203,8 @@ export function OptionCard({
   if (layout === 'region') {
     return (
       <button type="button" onClick={onClick} className="q-in flex flex-col items-center text-center rounded-2xl p-3 active:scale-[.97]" style={base}>
-        <div className="grid place-items-center mb-1" style={{ height: 104, color: selected ? 'var(--o)' : 'rgba(0,0,0,.3)', transition: 'color .25s' }}>
-          <Body variant="soft" size={58} highlight={selected ? opt.region : undefined} />
+        <div className="grid place-items-center mb-1" style={{ height: 112 }}>
+          <Avatar region={opt.region} size={108} selected={selected} />
         </div>
         <div className="font-display flex items-center gap-1.5" style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.2 }}>
           {selected && <span style={{ color: 'var(--o)' }}><Check s={13} /></span>}{opt.label}

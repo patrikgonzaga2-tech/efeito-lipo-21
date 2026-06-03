@@ -32,8 +32,29 @@ export type ImgKey = keyof typeof IMG
 export const CHECKOUT_HREF =
   'https://pay.hotmart.com/J105938667T?checkoutMode=10&variante=efeito-lipo-quiz&sck=efeito-lipo-quiz'
 
-export type BodyVariant = 'lean' | 'soft' | 'over' | 'much'
+export type BodyVariant = 'lean' | 'bloated' | 'soft' | 'over' | 'much'
 export type RegionKey = 'belly' | 'arms' | 'waist' | 'hips' | 'full' | 'none'
+
+// Avatares 3D (mesma mulher, vários corpos) — usados nas telas de corpo e região.
+// 'lean' = seca e definida (abdômen marcado) · 'bloated' = magra mas inchada e sem definição.
+export const AVATARS: Record<BodyVariant, string> = {
+  lean: enc('avatar-lean.png'),
+  bloated: enc('avatar-bloated.png'),
+  soft: enc('avatar-soft.png'),
+  over: enc('avatar-over.png'),
+  much: enc('avatar-much.png'),
+}
+
+// Mesma mulher com a região marcada (anel + brilho laranja) — tela "qual região
+// do seu corpo te incomoda mais". Cada card mostra sua parte sempre destacada.
+export const REGION_AVATARS: Record<RegionKey, string> = {
+  belly: enc('avatar-region-belly.png'),
+  arms:  enc('avatar-region-arms.png'),
+  waist: enc('avatar-region-waist.png'),
+  hips:  enc('avatar-region-hips.png'),
+  full:  enc('avatar-region-full.png'),
+  none:  enc('avatar-region-none.png'),
+}
 
 export type Opt = {
   id: string
@@ -136,7 +157,7 @@ export const STEPS: Step[] = [
     headline: 'Como você descreveria seu corpo hoje?',
     sub: 'Escolha uma opção para avançar',
     options: [
-      { id: 'inchada', body: 'lean', label: 'Bem de peso, mas inchada e sem definição', sub: 'As roupas não caem como antes' },
+      { id: 'inchada', body: 'bloated', label: 'Bem de peso, mas inchada e sem definição', sub: 'As roupas não caem como antes' },
       { id: 'leve-acima', body: 'soft', label: 'Levemente acima do peso' },
       { id: 'acima', body: 'over', label: 'Acima do peso' },
       { id: 'muito-acima', body: 'much', label: 'Muito acima do peso' },
