@@ -165,3 +165,49 @@ a {
 .faq-body-open {
   max-height: 400px;
 }
+
+/* ──────────────────────────────────────────────
+   QUIZ — Efeito Lipo (gamificado)
+   ────────────────────────────────────────────── */
+@keyframes q-in {
+  from { opacity: 0; transform: translateY(16px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+.q-in { animation: q-in .5s var(--ease-out) both; }
+
+@keyframes q-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.q-pop { animation: q-pop .35s var(--ease-out); }
+
+@keyframes q-check {
+  0% { transform: scale(0) rotate(-25deg); opacity: 0; }
+  60% { transform: scale(1.25) rotate(0); opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
+}
+.q-check { display: inline-grid; place-items: center; animation: q-check .4s var(--ease-out) both; }
+
+@keyframes q-glow {
+  0%,100% { box-shadow: 0 10px 30px rgba(245,113,0,.34); }
+  50%     { box-shadow: 0 14px 48px rgba(245,113,0,.62); }
+}
+.q-glow { animation: q-glow 2.2s ease-in-out infinite; }
+
+@keyframes q-floaty {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(-6px); }
+}
+.q-floaty { animation: q-floaty 3s ease-in-out infinite; }
+
+@keyframes q-confetti {
+  0%   { transform: translate3d(0,0,0) rotate(0); opacity: 1; }
+  100% { transform: translate3d(var(--dx,0),115vh,0) rotate(var(--rot,540deg)); opacity: 1; }
+}
+.q-confetti-piece { animation: q-confetti var(--dur,2.6s) var(--ease-out) var(--delay,0s) forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .q-in, .q-pop, .q-check, .q-glow, .q-floaty, .q-confetti-piece { animation: none !important; }
+  .q-in { opacity: 1; transform: none; }
+}

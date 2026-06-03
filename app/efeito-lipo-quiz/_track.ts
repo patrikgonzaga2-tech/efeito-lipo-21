@@ -1,0 +1,58 @@
+// Helper do cliente: envia os dados do quiz para a API interna (/api/quiz),
+// que grava no Supabase. A chave secreta nunca passa por aqui.
+
+export type QuizContext = {
+  variante?: string
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_content?: string
+  utm_term?: string
+  sck?: string
+  referrer?: string
+  user_agent?: string
+}
+
+const SID_KEY = 'el_quiz_sid'
+
+export function getSessionId(): string {
+  if (typeof window === 'undefined') return ''
+  let v = sessionStorage.getItem(SID_KEY)
+  if (!v) {
+    v = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    sessionStorage.setItem(SID_KEY, v)
+  }
+  return v
+}
+
+export function captureContext(): QuizContext {
+  if (typeof window === 'undefined') return {}
+  const p = new URLSearchParams(window.location.search)
+  const g = (k: string) => p.get(k) || undefined
+  return {
+    variante: g('variante'),
+    utm_source: g('utm_source'),
+    utm_medium: g('utm_medium'),
+    utm_campaign: g('utm_campaign'),
+    utm_content: g('utm_content'),
+    utm_term: g('utm_term'),
+    sck: g('sck'),
+    referrer: document.referrer || undefined,
+    user_agent: navigator.userAgent,
+  }
+}
+
+export function persist(body: Record<string, unknown>): void {
+  try {
+    fetch('/api/quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true,
+    }).catch(() => {})
+  } catch {
+    /* nunca quebra a experiência do quiz */
+  }
+}
