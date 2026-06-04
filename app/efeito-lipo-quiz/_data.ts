@@ -11,6 +11,7 @@ export const IMG = {
   laura:       enc('Laura-Arrumada-hero.jpg'),
   heroResult:  enc('Foto-Laura-Barriga-hero.png'),
   antesDepois: enc('Antes e Depois Laura.jpeg'),
+  intro:       enc('Antes e Depois Laura 3.jpeg'),
   camila:      enc('Depoimento Camila 30 anos, mãe de 2 e confeitera.jpeg'),
   suhene:      enc('Depoimento Suhene 43 anos mãe.jpeg'),
   gabriela34:  enc('Depoimento Gabriela 34 anos mãe e trabalha fora de casa.jpeg'),

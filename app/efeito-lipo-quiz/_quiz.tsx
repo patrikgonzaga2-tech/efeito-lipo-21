@@ -675,8 +675,8 @@ function Intro({ onStart }: { onStart: () => void }) {
           Faça a avaliação gratuita e descubra como ativar o Efeito Lipo e queimar até 8kg de gordura em 21 dias comendo comida de verdade — sem academia e sem as canetinhas caras.
         </p>
         <div className="q-in w-full mt-7 mb-7" style={{ maxWidth: 360, borderRadius: 22, overflow: 'hidden', boxShadow: '0 18px 50px rgba(0,0,0,.4)' }}>
-          <div className="relative" style={{ aspectRatio: '1000 / 987' }}>
-            <Image src={IMG.priscila} alt="Resultado real em 7 dias com o Efeito Lipo" fill sizes="(max-width: 560px) 86vw, 360px" priority className="object-cover" />
+          <div className="relative" style={{ aspectRatio: '1 / 1' }}>
+            <Image src={IMG.intro} alt="Antes e depois — resultado real com o Efeito Lipo" fill sizes="(max-width: 560px) 86vw, 360px" priority className="object-cover" />
           </div>
         </div>
         <CtaButton onClick={onStart} glow size="lg">Iniciar avaliação gratuita</CtaButton>
