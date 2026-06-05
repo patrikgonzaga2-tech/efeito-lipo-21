@@ -66,6 +66,34 @@ function Bar({ label, value, total, color = 'var(--o)' }: { label: string; value
   )
 }
 
+function PeriodFilter({ range, from, to, periodLabel, count }: { range: string; from?: string; to?: string; periodLabel: string; count: number }) {
+  const presets: [string, string][] = [['1d', '24h'], ['3d', '3 dias'], ['7d', '7 dias'], ['30d', '30 dias'], ['all', 'Tudo']]
+  const pill = (active: boolean): React.CSSProperties => ({
+    padding: '8px 14px', borderRadius: 99, fontSize: 13.5, fontWeight: 700, textDecoration: 'none',
+    border: active ? '1px solid var(--o)' : '1px solid rgba(0,0,0,.12)',
+    background: active ? 'var(--o)' : '#fff', color: active ? '#fff' : 'var(--ink)',
+    whiteSpace: 'nowrap', display: 'inline-block',
+  })
+  const inp: React.CSSProperties = { padding: '7px 10px', borderRadius: 10, border: '1px solid rgba(0,0,0,.14)', fontSize: 13.5, background: '#fff', color: 'var(--ink)' }
+  return (
+    <div className="rounded-2xl p-4 mb-5" style={{ background: '#fff', border: '1px solid rgba(0,0,0,.07)' }}>
+      <div className="flex flex-wrap items-center gap-2">
+        {presets.map(([k, label]) => <a key={k} href={`?range=${k}`} style={pill(range === k)}>{label}</a>)}
+        <form method="get" className="flex flex-wrap items-center gap-2" style={{ marginLeft: 'auto' }}>
+          <input type="hidden" name="range" value="custom" />
+          <input type="date" name="from" defaultValue={from} aria-label="De" style={inp} />
+          <span style={{ color: 'var(--mute)', fontSize: 13 }}>até</span>
+          <input type="date" name="to" defaultValue={to} aria-label="Até" style={inp} />
+          <button type="submit" style={{ ...pill(range === 'custom'), cursor: 'pointer', border: range === 'custom' ? '1px solid var(--g)' : '1px solid rgba(0,0,0,.12)', background: range === 'custom' ? 'var(--g)' : 'var(--ink)', color: '#fff' }}>Aplicar</button>
+        </form>
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 10 }}>
+        Mostrando <strong style={{ color: 'var(--ink)' }}>{periodLabel}</strong> · {count} {count === 1 ? 'sessão' : 'sessões'}
+      </div>
+    </div>
+  )
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-8">
@@ -75,7 +103,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export default async function DashboardPage() {
+type SearchParams = { range?: string; from?: string; to?: string }
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const jar = await cookies()
   const pw = process.env.QUIZ_DASHBOARD_PASSWORD
   const authed = Boolean(pw) && jar.get('qd_auth')?.value === pw
@@ -85,7 +115,30 @@ export default async function DashboardPage() {
     return <Shell><p style={{ color: 'var(--sub)' }}>Supabase não configurado no servidor (defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY).</p></Shell>
   }
 
-  const sessions = await sbSelect<SessionRow>('quiz_sessions', 'select=*&order=created_at.desc&limit=5000')
+  // ── Filtro de período ─────────────────────────────────────────────
+  // Presets = janelas móveis (últimas N×24h). Personalizado = datas no
+  // fuso de Brasília (-03:00) pra alinhar ao dia certo do usuário.
+  const sp = await searchParams
+  const range = sp.range || 'all'
+  const DAY = 86_400_000
+  const PRESET_DAYS: Record<string, number> = { '1d': 1, '3d': 3, '7d': 7, '30d': 30 }
+  let sinceIso: string | null = null
+  let untilIso: string | null = null
+  let periodLabel = 'todo o período'
+  if (range === 'custom' && (sp.from || sp.to)) {
+    if (sp.from) sinceIso = `${sp.from}T00:00:00-03:00`
+    if (sp.to) untilIso = `${sp.to}T23:59:59-03:00`
+    periodLabel = `${sp.from || '…'} até ${sp.to || '…'}`
+  } else if (PRESET_DAYS[range]) {
+    const d = PRESET_DAYS[range]
+    sinceIso = new Date(Date.now() - d * DAY).toISOString()
+    periodLabel = d === 1 ? 'últimas 24 horas' : `últimos ${d} dias`
+  }
+
+  let query = 'select=*&order=created_at.desc&limit=5000'
+  if (sinceIso) query += `&created_at=gte.${encodeURIComponent(sinceIso)}`
+  if (untilIso) query += `&created_at=lte.${encodeURIComponent(untilIso)}`
+  const sessions = await sbSelect<SessionRow>('quiz_sessions', query)
 
   const total = sessions.length
   const completed = sessions.filter((s) => s.status === 'completed').length
@@ -128,6 +181,7 @@ export default async function DashboardPage() {
 
   return (
     <Shell>
+      <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} count={total} />
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}>
         <Card label="Inícios" value={String(total)} sub="sessões que começaram" />
         <Card label="Conclusões" value={String(completed)} sub={`${pct(completed, total)}% de conclusão`} accent="var(--g)" />
