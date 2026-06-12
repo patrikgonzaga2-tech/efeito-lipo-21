@@ -135,6 +135,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     periodLabel = d === 1 ? 'últimas 24 horas' : `últimos ${d} dias`
   }
 
+  // ── Reinício da medição ───────────────────────────────────────────
+  // A contagem da 1ª tela foi corrigida (dwell alinhado ao Meta). Os dados
+  // ANTES deste marco foram coletados com a lógica antiga/inflada — ficam
+  // GUARDADOS no banco, mas o dashboard parte daqui pra refletir só a
+  // contagem nova e limpa. Nada é apagado: pra rever o histórico, basta
+  // recuar (ou remover) este marco. Piso aplicado a todos os períodos.
+  const MEASURE_SINCE = '2026-06-12T16:00:00Z' // 12/06 13h (Brasília)
+  if (!sinceIso || new Date(sinceIso) < new Date(MEASURE_SINCE)) {
+    sinceIso = MEASURE_SINCE
+    if (range === 'all') periodLabel = 'desde o reinício · 12/06 13h'
+  }
+
   // Busca paginada (sbSelectAll): o PostgREST corta cada resposta em 1000
   // linhas, então sem paginar o dashboard travaria em 1000 e subcontaria tudo.
   let query = 'select=*&order=created_at.desc'
