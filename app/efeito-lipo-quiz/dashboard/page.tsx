@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { sbSelect, supabaseConfigured } from '@/lib/supabase'
+import { sbSelectAll, supabaseConfigured } from '@/lib/supabase'
 import { STEPS } from '../_data'
 import type { Step } from '../_data'
 import Login from './_login'
@@ -135,10 +135,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     periodLabel = d === 1 ? 'últimas 24 horas' : `últimos ${d} dias`
   }
 
-  let query = 'select=*&order=created_at.desc&limit=5000'
+  // Busca paginada (sbSelectAll): o PostgREST corta cada resposta em 1000
+  // linhas, então sem paginar o dashboard travaria em 1000 e subcontaria tudo.
+  let query = 'select=*&order=created_at.desc'
   if (sinceIso) query += `&created_at=gte.${encodeURIComponent(sinceIso)}`
   if (untilIso) query += `&created_at=lte.${encodeURIComponent(untilIso)}`
-  const sessions = await sbSelect<SessionRow>('quiz_sessions', query)
+  const sessions = await sbSelectAll<SessionRow>('quiz_sessions', query)
 
   // Pageviews = TODAS as linhas (toda sessão nasce na 1ª tela, com status
   // 'pageview'). Inícios = quem clicou em "Iniciar" (status deixa de ser

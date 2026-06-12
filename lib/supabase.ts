@@ -75,3 +75,38 @@ export async function sbSelect<T = unknown>(table: string, query = ''): Promise<
     return []
   }
 }
+
+/** Consulta TODAS as linhas, paginando de 1000 em 1000. O PostgREST limita
+ *  cada resposta a 1000 linhas (db-max-rows) mesmo com limit maior — sem
+ *  paginar, o dashboard travaria nesse teto e subcontaria. Usa o header Range
+ *  e lê o total do Content-Range pra saber quando parar. NÃO inclua `limit`
+ *  na query: a janela é controlada pelo Range. Nunca lança — retorna o que
+ *  conseguiu. Trava de segurança em 100k linhas. */
+export async function sbSelectAll<T = unknown>(table: string, query = ''): Promise<T[]> {
+  if (!supabaseConfigured()) return []
+  const PAGE = 1000
+  const MAX = 100_000
+  const out: T[] = []
+  try {
+    for (let from = 0; from < MAX; from += PAGE) {
+      const to = from + PAGE - 1
+      const res = await fetch(restUrl(table, query), {
+        method: 'GET',
+        headers: headers({ 'Range-Unit': 'items', Range: `${from}-${to}` }),
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        console.error(`[supabase] sbSelectAll ${table} HTTP ${res.status}:`, await res.text().catch(() => ''))
+        break
+      }
+      const batch = (await res.json()) as T[]
+      out.push(...batch)
+      const total = Number((res.headers.get('content-range') || '').split('/')[1])
+      if (batch.length < PAGE) break
+      if (Number.isFinite(total) && out.length >= total) break
+    }
+  } catch (e) {
+    console.error('[supabase] sbSelectAll falhou:', e)
+  }
+  return out
+}
