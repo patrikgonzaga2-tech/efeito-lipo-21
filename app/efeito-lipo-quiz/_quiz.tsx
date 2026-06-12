@@ -37,13 +37,14 @@ export default function QuizApp() {
   useEffect(() => { answersRef.current = answers }, [answers])
   useEffect(() => { sidRef.current = getSessionId() }, [])
 
-  // Pageview da 1ª tela: registra quem ENTRA na intro, mesmo que nunca
-  // clique em "Iniciar". Dispara uma única vez por sessão. É o topo do funil.
+  // Pageview do topo do funil: a gravação no Supabase é feita por um beacon
+  // inline em page.tsx, que dispara assim que a página abre (antes da
+  // hidratação) — captura também quem sai antes do quiz ficar usável. Aqui só
+  // empurramos o evento pro GTM/dataLayer, uma única vez, na 1ª tela (intro).
   useEffect(() => {
     if (pvRef.current) return
     if (STEPS[index]?.kind !== 'intro') return
     pvRef.current = true
-    persist({ id: sidRef.current, action: 'pageview', ...captureContext() })
     track('quiz_pageview')
   }, [index])
 
