@@ -140,7 +140,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   if (untilIso) query += `&created_at=lte.${encodeURIComponent(untilIso)}`
   const sessions = await sbSelect<SessionRow>('quiz_sessions', query)
 
+  // Pageviews = TODAS as linhas (toda sessão nasce na 1ª tela, com status
+  // 'pageview'). Inícios = quem clicou em "Iniciar" (status deixa de ser
+  // 'pageview' e vira 'started'/'completed'). 'total' = pageviews: é o
+  // denominador do topo do funil.
   const total = sessions.length
+  const pageviews = total
+  const starts = sessions.filter((s) => s.status !== 'pageview').length
   const completed = sessions.filter((s) => s.status === 'completed').length
   const checkout = sessions.filter((s) => s.checkout_clicked).length
   const reachedSales = sessions.filter((s) => s.reached_index >= 24).length
@@ -182,11 +188,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <Shell>
       <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} count={total} />
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}>
-        <Card label="Inícios" value={String(total)} sub="sessões que começaram" />
-        <Card label="Conclusões" value={String(completed)} sub={`${pct(completed, total)}% de conclusão`} accent="var(--g)" />
-        <Card label="Chegaram à venda" value={String(reachedSales)} sub={`${pct(reachedSales, total)}% do total`} />
-        <Card label="Cliques no checkout" value={String(checkout)} sub={`${pct(checkout, total)}% do total`} accent="var(--o)" />
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))' }}>
+        <Card label="Visualizações" value={String(pageviews)} sub="entraram na 1ª tela" />
+        <Card label="Inícios" value={String(starts)} sub={`${pct(starts, pageviews)}% clicaram em iniciar`} accent="var(--gd)" />
+        <Card label="Conclusões" value={String(completed)} sub={`${pct(completed, starts)}% de quem iniciou`} accent="var(--g)" />
+        <Card label="Chegaram à venda" value={String(reachedSales)} sub={`${pct(reachedSales, pageviews)}% das views`} />
+        <Card label="Cliques no checkout" value={String(checkout)} sub={`${pct(checkout, pageviews)}% das views`} accent="var(--o)" />
       </div>
 
       <Section title="Funil — abandono por tela">
@@ -242,7 +249,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {recent.map((s) => (
                 <tr key={s.id} style={{ borderBottom: '1px solid rgba(0,0,0,.05)' }}>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{fmt(s.created_at)}</td>
-                  <td style={{ padding: '9px 12px' }}><span style={{ fontWeight: 700, color: s.status === 'completed' ? 'var(--g)' : 'var(--mute)' }}>{s.status === 'completed' ? 'Concluiu' : 'Em andamento'}</span></td>
+                  <td style={{ padding: '9px 12px' }}><span style={{ fontWeight: 700, color: s.status === 'completed' ? 'var(--g)' : s.status === 'pageview' ? 'var(--mute)' : 'var(--ink)' }}>{s.status === 'completed' ? 'Concluiu' : s.status === 'pageview' ? 'Só viu a 1ª tela' : 'Em andamento'}</span></td>
                   <td style={{ padding: '9px 12px' }}>{s.reached_index}</td>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{s.variante || '—'}</td>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{s.utm_source || '—'}</td>

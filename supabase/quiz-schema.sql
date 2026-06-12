@@ -9,7 +9,7 @@ create table if not exists public.quiz_sessions (
   id            uuid primary key default gen_random_uuid(),
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
-  status        text not null default 'started',   -- started | completed
+  status        text not null default 'started',   -- pageview | started | completed
   reached_index int  not null default 0,           -- tela mais avançada alcançada
   variante      text,
   utm_source    text,
@@ -34,7 +34,7 @@ create table if not exists public.quiz_events (
   id          bigint generated always as identity primary key,
   created_at  timestamptz not null default now(),
   session_id  uuid not null references public.quiz_sessions(id) on delete cascade,
-  event       text not null,        -- start | step | complete | checkout
+  event       text not null,        -- pageview | start | step | complete | checkout
   step_index  int,
   step_id     text,
   answer      text,

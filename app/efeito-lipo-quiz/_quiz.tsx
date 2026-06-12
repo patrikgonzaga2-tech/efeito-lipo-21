@@ -29,12 +29,23 @@ export default function QuizApp() {
   const [confetti, setConfetti] = useState(false)
   const busyRef = useRef(false)
   const sidRef = useRef('')
+  const pvRef = useRef(false)
   const answersRef = useRef(answers)
   const buzz = useHaptics()
   const step = STEPS[index]
 
   useEffect(() => { answersRef.current = answers }, [answers])
   useEffect(() => { sidRef.current = getSessionId() }, [])
+
+  // Pageview da 1ª tela: registra quem ENTRA na intro, mesmo que nunca
+  // clique em "Iniciar". Dispara uma única vez por sessão. É o topo do funil.
+  useEffect(() => {
+    if (pvRef.current) return
+    if (STEPS[index]?.kind !== 'intro') return
+    pvRef.current = true
+    persist({ id: sidRef.current, action: 'pageview', ...captureContext() })
+    track('quiz_pageview')
+  }, [index])
 
   // Pré-visualização: /efeito-lipo-quiz?step=N abre direto numa tela específica.
   useEffect(() => {

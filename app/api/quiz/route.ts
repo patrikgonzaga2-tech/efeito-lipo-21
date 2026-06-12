@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 type Body = {
   id?: string
-  action?: 'start' | 'step' | 'complete' | 'checkout'
+  action?: 'pageview' | 'start' | 'step' | 'complete' | 'checkout'
   variante?: string
   utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; utm_term?: string
   sck?: string; referrer?: string; user_agent?: string
@@ -29,7 +29,19 @@ export async function POST(req: Request) {
   const now = new Date().toISOString()
 
   try {
-    if (action === 'start') {
+    if (action === 'pageview') {
+      // Entrou na 1ª tela (intro), antes de clicar em "Iniciar".
+      // Cria a sessão cedo com status 'pageview' e já captura a origem.
+      // Quando (e se) clicar em iniciar, o 'start' sobrescreve para 'started'.
+      await sbUpsert('quiz_sessions', {
+        id, status: 'pageview', reached_index: 0, updated_at: now,
+        variante: b.variante ?? null,
+        utm_source: b.utm_source ?? null, utm_medium: b.utm_medium ?? null,
+        utm_campaign: b.utm_campaign ?? null, utm_content: b.utm_content ?? null, utm_term: b.utm_term ?? null,
+        sck: b.sck ?? null, referrer: b.referrer ?? null, user_agent: b.user_agent ?? null,
+      })
+      await sbInsert('quiz_events', { session_id: id, event: 'pageview' })
+    } else if (action === 'start') {
       await sbUpsert('quiz_sessions', {
         id, status: 'started', reached_index: 0, updated_at: now,
         variante: b.variante ?? null,
