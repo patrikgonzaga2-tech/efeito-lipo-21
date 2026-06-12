@@ -42,6 +42,23 @@ export async function sbUpsert(table: string, row: Record<string, unknown>) {
   }
 }
 
+/** Insere uma linha SE ainda não existir (on conflict id -> do nothing).
+ *  Diferente do upsert: NUNCA sobrescreve uma linha existente. Usado no
+ *  pageview, que pode chegar DEPOIS de a sessão já ter avançado (start/
+ *  complete) — sem isso, rebaixaria o status de volta pra 'pageview'. */
+export async function sbInsertIgnore(table: string, row: Record<string, unknown>) {
+  if (!supabaseConfigured()) return
+  try {
+    await fetch(restUrl(table, 'on_conflict=id'), {
+      method: 'POST',
+      headers: headers({ Prefer: 'resolution=ignore-duplicates,return=minimal' }),
+      body: JSON.stringify(row),
+    })
+  } catch (e) {
+    console.error('[supabase] sbInsertIgnore falhou:', e)
+  }
+}
+
 /** Insere uma linha. Nunca lança. */
 export async function sbInsert(table: string, row: Record<string, unknown>) {
   if (!supabaseConfigured()) return

@@ -12,18 +12,19 @@ export const metadata = {
   },
 }
 
-// Pageview do topo do funil: grava assim que a página fica VISÍVEL pra
-// pessoa — antes de o app do quiz baixar/hidratar, mas só quando é um view
-// humano de verdade. O gate de visibilidade ignora os pré-carregamentos /
-// prerender que o Instagram roda escondido (que estouravam a contagem
-// acima dos cliques). Alinha o dashboard com a "Visualização da página de
-// destino" do Meta. A mesma sessão (el_quiz_sid) é reaproveitada pelo app;
-// o upsert torna idempotente.
+// Pageview do topo do funil, ALINHADO ao Meta: só conta quando a página fica
+// visível pra pessoa por DWELL ms SEGUIDOS. Isso descarta (a) os pré-
+// carregamentos do Instagram, que rodam ocultos e nunca acumulam tempo
+// visível, e (b) as saídas instantâneas (<DWELL) — que é, na prática, o que o
+// pixel lento do Meta acaba exigindo. Assim a "Visualização" do dashboard
+// reconcilia com a "Visualização da página de destino" do Meta. A gravação é
+// insert-ignore no servidor: se a pessoa clicar em "começar" antes do DWELL,
+// NÃO rebaixa o status. DWELL é ajustável — medir e calibrar pra bater ~Meta.
 const PAGEVIEW_BEACON = `(function(){try{
   if(window.__elqpv)return;window.__elqpv=1;
-  var sent=false;
+  var DWELL=3000,t=null,done=false;
   function send(){
-    if(sent)return;sent=true;
+    if(done)return;done=true;
     try{
       var K='el_quiz_sid',sid=sessionStorage.getItem(K);
       if(!sid){sid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(16).slice(2));sessionStorage.setItem(K,sid);}
@@ -36,10 +37,13 @@ const PAGEVIEW_BEACON = `(function(){try{
       })}).catch(function(){});
     }catch(e){}
   }
-  if(document.visibilityState==='visible'){send();}
-  else{document.addEventListener('visibilitychange',function on(){
-    if(document.visibilityState==='visible'){document.removeEventListener('visibilitychange',on);send();}
-  });}
+  function tick(){
+    if(done)return;
+    if(document.visibilityState==='visible'){ if(t===null)t=setTimeout(function(){t=null;send();},DWELL); }
+    else if(t!==null){ clearTimeout(t); t=null; }
+  }
+  document.addEventListener('visibilitychange',tick);
+  tick();
 }catch(e){}})();`
 
 export default function Page() {

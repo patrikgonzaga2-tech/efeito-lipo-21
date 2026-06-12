@@ -1,4 +1,4 @@
-import { sbInsert, sbUpsert } from '@/lib/supabase'
+import { sbInsert, sbInsertIgnore, sbUpsert } from '@/lib/supabase'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,10 +30,11 @@ export async function POST(req: Request) {
 
   try {
     if (action === 'pageview') {
-      // Entrou na 1ª tela (intro), antes de clicar em "Iniciar".
-      // Cria a sessão cedo com status 'pageview' e já captura a origem.
-      // Quando (e se) clicar em iniciar, o 'start' sobrescreve para 'started'.
-      await sbUpsert('quiz_sessions', {
+      // Visualização real da 1ª tela (após alguns segundos visível — alinhado
+      // ao Meta). insert-ignore: cria a sessão SÓ se ainda não existir; se a
+      // pessoa já clicou em "começar" antes (sessão já 'started'/'completed'),
+      // NÃO rebaixa o status de volta pra 'pageview'.
+      await sbInsertIgnore('quiz_sessions', {
         id, status: 'pageview', reached_index: 0, updated_at: now,
         variante: b.variante ?? null,
         utm_source: b.utm_source ?? null, utm_medium: b.utm_medium ?? null,
