@@ -48,13 +48,27 @@ export default function RootLayout({
         style={{ fontFamily: 'var(--font-body, DM Sans, sans-serif)' }}
         suppressHydrationWarning
       >
-        {/* Google Tag Manager */}
-        <Script id="gtm" strategy="afterInteractive">{`
-          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-          })(window,document,'script','dataLayer','GTM-KFQ56MZ7');
+        {/* Google Tag Manager — carregado de forma ADIADA (~2,5s OU no primeiro
+            gesto do usuário, o que vier antes) para não competir com a
+            renderização da 1ª tela em celulares fracos. O GTM (e tudo que ele
+            dispara: GA4, Pixel do Facebook, Clarity, CAPI) sai do caminho
+            crítico. Nada de rastreio é perdido: os eventos do quiz são
+            empilhados no dataLayer e processados assim que o GTM carrega; e a
+            "Visualização" do dashboard tem beacon próprio no servidor (page.tsx),
+            independente do GTM. */}
+        <Script id="gtm-deferred" strategy="afterInteractive">{`
+          (function(w,d){
+            if(w.__gtmInit)return;w.__gtmInit=1;
+            w.dataLayer=w.dataLayer||[];
+            var evts=['scroll','pointerdown','touchstart','keydown','mousemove'],t=null,loaded=false;
+            function cleanup(){if(t){clearTimeout(t);t=null;}evts.forEach(function(e){w.removeEventListener(e,load);});}
+            function load(){
+              if(loaded)return;loaded=true;cleanup();
+              (function(w,d,s,l,i){w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(w,d,'script','dataLayer','GTM-KFQ56MZ7');
+            }
+            t=setTimeout(load,2500);
+            evts.forEach(function(e){w.addEventListener(e,load,{once:true,passive:true});});
+          })(window,document);
         `}</Script>
         <noscript>
           <iframe
