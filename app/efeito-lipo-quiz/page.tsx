@@ -1,3 +1,4 @@
+import Script from 'next/script'
 import QuizApp from './_quiz'
 
 export const metadata = {
@@ -29,8 +30,11 @@ const PAGEVIEW_BEACON = `(function(){try{
       var K='el_quiz_sid',sid=sessionStorage.getItem(K);
       if(!sid){sid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(16).slice(2));sessionStorage.setItem(K,sid);}
       var p=new URLSearchParams(location.search),g=function(k){return p.get(k)||undefined;};
+      var ABK='el_intro_ab',fab=p.get('ab'),ab=(fab==='A'||fab==='B')?fab:sessionStorage.getItem(ABK);
+      if(ab!=='A'&&ab!=='B'){ab=Math.random()<0.5?'A':'B';}
+      sessionStorage.setItem(ABK,ab);
       fetch('/api/quiz',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({
-        id:sid,action:'pageview',variante:g('variante'),
+        id:sid,action:'pageview',variante:g('variante'),intro_ab:ab,
         utm_source:g('utm_source'),utm_medium:g('utm_medium'),utm_campaign:g('utm_campaign'),
         utm_content:g('utm_content'),utm_term:g('utm_term'),sck:g('sck'),
         referrer:document.referrer||undefined,user_agent:navigator.userAgent
@@ -49,7 +53,7 @@ const PAGEVIEW_BEACON = `(function(){try{
 export default function Page() {
   return (
     <>
-      <script dangerouslySetInnerHTML={{ __html: PAGEVIEW_BEACON }} />
+      <Script id="el-pageview-beacon" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: PAGEVIEW_BEACON }} />
       <QuizApp />
     </>
   )

@@ -15,6 +15,7 @@ type SessionRow = {
   status: string
   reached_index: number
   variante?: string | null
+  intro_ab?: string | null
   utm_source?: string | null
   altura?: number | null
   peso?: number | null
@@ -165,6 +166,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const checkout = sessions.filter((s) => s.checkout_clicked).length
   const reachedSales = sessions.filter((s) => s.reached_index >= 24).length
 
+  // ── Teste A/B da 1ª tela ──────────────────────────────────────────
+  // A = versão original (controle, a que estava no ar) · B = versão nova.
+  // "Taxa de início" = inícios ÷ visualizações: a conversão da 1ª tela.
+  // Sessões sem intro_ab (anteriores ao teste) ficam de fora da comparação.
+  const abStats = (['A', 'B'] as const).map((v) => {
+    const rows = sessions.filter((s) => s.intro_ab === v)
+    const views = rows.length
+    const startsV = rows.filter((s) => s.status !== 'pageview').length
+    return { v, views, starts: startsV, rate: pct(startsV, views), label: v === 'A' ? 'original (controle)' : 'nova' }
+  })
+  const abLeader = abStats[0].views && abStats[1].views
+    ? (abStats[1].rate === abStats[0].rate ? null : abStats[1].rate > abStats[0].rate ? 'B' : 'A')
+    : null
+
   // Funil por etapa (quantas sessões alcançaram cada tela)
   const funnelSteps = STEPS.map((s, i) => ({ i, label: `${i}. ${stepLabel(s)}`, count: sessions.filter((x) => x.reached_index >= i).length }))
     .filter((f) => f.i <= 24)
@@ -209,6 +224,31 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <Card label="Chegaram à venda" value={String(reachedSales)} sub={`${pct(reachedSales, pageviews)}% das views`} />
         <Card label="Cliques no checkout" value={String(checkout)} sub={`${pct(checkout, pageviews)}% das views`} accent="var(--o)" />
       </div>
+
+      <Section title="Teste A/B — 1ª tela">
+        <div className="grid gap-4 md:grid-cols-2">
+          {abStats.map(({ v, views, starts: st, rate, label }) => {
+            const win = abLeader === v
+            return (
+              <div key={v} className="rounded-2xl p-5" style={{ background: '#fff', border: win ? '2px solid var(--g)' : '1px solid rgba(0,0,0,.07)', boxShadow: '0 4px 16px rgba(0,0,0,.04)' }}>
+                <div className="flex items-center gap-2" style={{ marginBottom: 2 }}>
+                  <span className="font-display" style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>Versão {v}</span>
+                  <span style={{ fontSize: 12.5, color: 'var(--mute)' }}>· {label}</span>
+                  {win && <span style={{ marginLeft: 'auto', fontSize: 11.5, fontWeight: 800, color: 'var(--g)', textTransform: 'uppercase', letterSpacing: '.04em' }}>na frente ▲</span>}
+                </div>
+                <div className="font-display" style={{ fontSize: 40, fontWeight: 800, color: v === 'A' ? 'var(--gd)' : 'var(--o)', lineHeight: 1.1, marginTop: 6 }}>{rate}%</div>
+                <div style={{ fontSize: 12.5, color: 'var(--sub)' }}>taxa de início (clicaram em começar)</div>
+                <div style={{ fontSize: 13, color: 'var(--sub)', marginTop: 12 }}>
+                  <strong style={{ color: 'var(--ink)' }}>{views}</strong> visualizações · <strong style={{ color: 'var(--ink)' }}>{st}</strong> inícios
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 10 }}>
+          A = 1ª tela original (controle) · B = 1ª tela nova. Sorteio 50/50 por sessão. Sessões abertas antes do teste não têm versão e ficam fora desta comparação.
+        </div>
+      </Section>
 
       <Section title="Funil — abandono por tela">
         <div className="rounded-2xl p-5 space-y-2" style={{ background: '#fff', border: '1px solid rgba(0,0,0,.07)' }}>
@@ -256,7 +296,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ textAlign: 'left', color: 'var(--mute)', borderBottom: '1px solid rgba(0,0,0,.08)' }}>
-                {['Quando', 'Status', 'Tela', 'Variante', 'Origem', 'Peso→Meta', 'Checkout'].map((h) => <th key={h} style={{ padding: '10px 12px', fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>)}
+                {['Quando', 'Status', 'Tela', '1ª tela', 'Variante', 'Origem', 'Peso→Meta', 'Checkout'].map((h) => <th key={h} style={{ padding: '10px 12px', fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -265,13 +305,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{fmt(s.created_at)}</td>
                   <td style={{ padding: '9px 12px' }}><span style={{ fontWeight: 700, color: s.status === 'completed' ? 'var(--g)' : s.status === 'pageview' ? 'var(--mute)' : 'var(--ink)' }}>{s.status === 'completed' ? 'Concluiu' : s.status === 'pageview' ? 'Só viu a 1ª tela' : 'Em andamento'}</span></td>
                   <td style={{ padding: '9px 12px' }}>{s.reached_index}</td>
+                  <td style={{ padding: '9px 12px', fontWeight: 700 }}>{s.intro_ab || '—'}</td>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{s.variante || '—'}</td>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{s.utm_source || '—'}</td>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{s.peso ? `${s.peso}→${s.meta_peso ?? '?'}kg` : '—'}</td>
                   <td style={{ padding: '9px 12px' }}>{s.checkout_clicked ? '✅' : '—'}</td>
                 </tr>
               ))}
-              {!recent.length && <tr><td colSpan={7} style={{ padding: 20, textAlign: 'center', color: 'var(--mute)' }}>Nenhuma sessão ainda. Faça o quiz para gerar dados.</td></tr>}
+              {!recent.length && <tr><td colSpan={8} style={{ padding: 20, textAlign: 'center', color: 'var(--mute)' }}>Nenhuma sessão ainda. Faça o quiz para gerar dados.</td></tr>}
             </tbody>
           </table>
         </div>

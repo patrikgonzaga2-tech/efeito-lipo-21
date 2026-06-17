@@ -7,6 +7,7 @@ type Body = {
   id?: string
   action?: 'pageview' | 'start' | 'step' | 'complete' | 'checkout'
   variante?: string
+  intro_ab?: string // teste A/B da 1ª tela: 'A' (original) | 'B' (nova)
   utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; utm_term?: string
   sck?: string; referrer?: string; user_agent?: string
   reached_index?: number
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
       // NÃO rebaixa o status de volta pra 'pageview'.
       await sbInsertIgnore('quiz_sessions', {
         id, status: 'pageview', reached_index: 0, updated_at: now,
-        variante: b.variante ?? null,
+        variante: b.variante ?? null, intro_ab: b.intro_ab ?? null,
         utm_source: b.utm_source ?? null, utm_medium: b.utm_medium ?? null,
         utm_campaign: b.utm_campaign ?? null, utm_content: b.utm_content ?? null, utm_term: b.utm_term ?? null,
         sck: b.sck ?? null, referrer: b.referrer ?? null, user_agent: b.user_agent ?? null,
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
     } else if (action === 'start') {
       await sbUpsert('quiz_sessions', {
         id, status: 'started', reached_index: 0, updated_at: now,
-        variante: b.variante ?? null,
+        variante: b.variante ?? null, intro_ab: b.intro_ab ?? null,
         utm_source: b.utm_source ?? null, utm_medium: b.utm_medium ?? null,
         utm_campaign: b.utm_campaign ?? null, utm_content: b.utm_content ?? null, utm_term: b.utm_term ?? null,
         sck: b.sck ?? null, referrer: b.referrer ?? null, user_agent: b.user_agent ?? null,

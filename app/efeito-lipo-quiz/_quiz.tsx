@@ -124,7 +124,7 @@ export default function QuizApp() {
 
   // ── Telas full-page (sem shell padrão) ────────────────────────────
   if (step.kind === 'intro') {
-    return <Intro onStart={() => { persist({ id: sidRef.current, action: 'start', ...captureContext() }); track('quiz_start'); next() }} />
+    return <Intro onStart={() => { const intro_ab = (typeof window !== 'undefined' && sessionStorage.getItem(INTRO_AB_KEY)) || undefined; persist({ id: sidRef.current, action: 'start', intro_ab, ...captureContext() }); track('quiz_start', { intro_ab }); next() }} />
   }
   if (step.kind === 'sales') {
     return <Sales perfil={perfil} onCheckout={() => { persist({ id: sidRef.current, action: 'checkout' }); track('initiate_checkout', { variante: 'efeito-lipo-quiz' }) }} />
@@ -672,7 +672,101 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 // ── T1 — Intro ──────────────────────────────────────────────────────
+// Contador de escassez: começa em 42, cai 3 vagas/s, trava em 9 e nunca
+// sobe. Guardado por sessão (sessionStorage) pra não "rejuvenescer" se a
+// pessoa voltar pra tela.
+function useVagas() {
+  const START = 42, FLOOR = 9, STEP = 3
+  const [vagas, setVagas] = useState(START)
+  useEffect(() => {
+    let atual = START
+    try {
+      const salvo = sessionStorage.getItem('el_vagas')
+      if (salvo != null) atual = Math.max(FLOOR, Math.min(START, parseInt(salvo, 10) || START))
+    } catch {}
+    setVagas(atual)
+    if (atual <= FLOOR) return
+    const id = setInterval(() => {
+      atual = Math.max(FLOOR, atual - STEP)
+      setVagas(atual)
+      try { sessionStorage.setItem('el_vagas', String(atual)) } catch {}
+      if (atual <= FLOOR) clearInterval(id)
+    }, 2000)
+    return () => clearInterval(id)
+  }, [])
+  return vagas
+}
+
+// ── Teste A/B da 1ª tela ────────────────────────────────────────────
+// A = versão original (a que está no ar) · B = versão nova. O sorteio
+// 50/50 é feito UMA vez por sessão pelo beacon em page.tsx (grava
+// 'el_intro_ab' no sessionStorage antes do React montar). Aqui só lemos.
+export const INTRO_AB_KEY = 'el_intro_ab'
+function readIntroAB(): 'A' | 'B' {
+  try {
+    // QA: ?ab=A ou ?ab=B força a versão (e fixa na sessão).
+    const forced = new URLSearchParams(window.location.search).get('ab')
+    if (forced === 'A' || forced === 'B') { sessionStorage.setItem(INTRO_AB_KEY, forced); return forced }
+    const v = sessionStorage.getItem(INTRO_AB_KEY)
+    if (v === 'A' || v === 'B') return v
+    const pick: 'A' | 'B' = Math.random() < 0.5 ? 'A' : 'B' // fallback se o beacon não rodou
+    sessionStorage.setItem(INTRO_AB_KEY, pick)
+    return pick
+  } catch { return 'B' }
+}
+
 function Intro({ onStart }: { onStart: () => void }) {
+  // Resolve a variante só no cliente (sessionStorage). Antes disso, um
+  // placeholder branco evita "hydration mismatch" e o flash é de 1 frame.
+  const [ab, setAb] = useState<'A' | 'B' | null>(null)
+  useEffect(() => { setAb(readIntroAB()) }, [])
+  if (ab === null) return <div className="min-h-[100dvh]" style={{ background: '#fff' }} />
+  return ab === 'A' ? <IntroA onStart={onStart} /> : <IntroB onStart={onStart} />
+}
+
+function IntroB({ onStart }: { onStart: () => void }) {
+  const vagas = useVagas()
+  return (
+    <div className="min-h-[100dvh] flex flex-col" style={{ background: '#fff' }}>
+      <div className="w-full px-4 py-2" style={{ background: 'var(--g)', color: '#fff' }}>
+        <div className="flex items-center justify-center gap-x-2.5 gap-y-1 flex-wrap" style={{ maxWidth: 600, margin: '0 auto' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.01em' }}>
+            As vagas do desafio estão acabando
+          </span>
+          <span className="inline-flex items-center gap-1.5" style={{ background: 'rgba(0,0,0,.28)', borderRadius: 999, padding: '4px 11px 4px 9px', lineHeight: 1 }}>
+            <span className="animate-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: '#FF4848', display: 'inline-block', boxShadow: '0 0 6px #FF4848' }} />
+            <span style={{ fontSize: 11.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', opacity: .9 }}>restam</span>
+            <span style={{ fontSize: 19, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{vagas}</span>
+          </span>
+        </div>
+      </div>
+      <div className="flex-1 flex flex-col items-center text-center mx-auto w-full px-5 py-8" style={{ maxWidth: 600 }}>
+        <h1 className="font-display q-in mt-7" style={{ fontSize: 'clamp(29px,6.4vw,46px)', fontWeight: 800, lineHeight: 1.08, letterSpacing: '-0.03em', color: '#0d0d0d', maxWidth: 540 }}>
+          Bora secar a barriga e definir os braços juntas?
+        </h1>
+        <p className="q-in" style={{ fontSize: 'clamp(16.5px,2.6vw,20px)', lineHeight: 1.5, fontWeight: 600, color: '#1a1a1a', maxWidth: 500, marginTop: 18 }}>
+          Vou te mostrar como ativar o <span style={{ color: 'var(--o)', fontWeight: 800 }}>EFEITO LIPO</span>, meu segredinho pra derreter a gordura localizada e secar o seu corpo de dentro pra fora.
+        </p>
+        <p className="q-in" style={{ fontSize: 'clamp(14px,2vw,15.5px)', lineHeight: 1.6, fontWeight: 400, color: '#5a5a5a', maxWidth: 460, marginTop: 14 }}>
+          Em apenas <span style={{ color: 'var(--o)', fontWeight: 700 }}>21 dias</span> você vai perder <span style={{ color: 'var(--o)', fontWeight: 700 }}>até 8kg</span>. Sem dieta maluca, sem academia e sem as canetinhas caras.
+        </p>
+        <div className="q-in w-full mt-7 mb-4" style={{ maxWidth: 360, borderRadius: 22, overflow: 'hidden', boxShadow: '0 18px 44px rgba(0,0,0,.18)' }}>
+          <div className="relative" style={{ aspectRatio: '1 / 1' }}>
+            <Image src={IMG.intro} alt="Antes e depois — resultado real com o Efeito Lipo" fill sizes="(max-width: 560px) 86vw, 360px" priority className="object-cover" />
+          </div>
+        </div>
+        <p className="q-in mb-6" style={{ fontSize: 'clamp(14.5px,2.1vw,16.5px)', lineHeight: 1.5, color: '#2a2a2a', maxWidth: 430 }}>
+          Esse foi o meu resultado e você pode ser a próxima!{' '}
+          <span style={{ fontWeight: 800 }}>Corre pra garantir a sua vaga</span> 👇
+        </p>
+        <CtaButton onClick={onStart} glow size="lg">Garantir minha vaga</CtaButton>
+      </div>
+    </div>
+  )
+}
+
+// Variante A — controle: a 1ª tela original, exatamente como está no ar.
+function IntroA({ onStart }: { onStart: () => void }) {
   return (
     <div className="min-h-[100dvh] flex flex-col" style={{ background: 'var(--gd)' }}>
       <div className="w-full text-center px-4 py-2.5" style={{ background: 'var(--g)', color: '#fff', fontSize: 13.5, fontWeight: 700, letterSpacing: '.01em' }}>
