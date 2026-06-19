@@ -55,7 +55,13 @@ Deno.serve(async (req) => {
 
   // 2) Para cada id (= adset.id), 1 chamada ao /insights dele (dia a dia).
   //    Os nomes de conjunto/campanha vêm como campos do próprio insights.
-  const fields = 'adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,reach,ctr,cpc,cpm,date_start'
+  //    O funil (page view, IC, compras) vem do array `actions`.
+  const fields = 'adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,inline_link_clicks,reach,ctr,cpc,cpm,actions,action_values,date_start'
+  // Extrai o valor de uma ação (ex: landing_page_view) do array do Meta.
+  const act = (arr: { action_type?: string; value?: string }[] | undefined, type: string): number | null => {
+    const a = (arr ?? []).find((x) => x.action_type === type)
+    return a ? Number(a.value) : null
+  }
   const rows: Record<string, unknown>[] = []
   const erros: { ad_id: string; error: unknown }[] = []
   const nowIso = new Date().toISOString()
@@ -81,6 +87,11 @@ Deno.serve(async (req) => {
           spend: num(d.spend),
           impressions: num(d.impressions),
           clicks: num(d.clicks),
+          link_clicks: num(d.inline_link_clicks) ?? act(d.actions, 'link_click'),
+          lp_views: act(d.actions, 'landing_page_view'),
+          ic: act(d.actions, 'initiate_checkout'),
+          purchases: act(d.actions, 'purchase'),
+          purchase_value: act(d.action_values, 'purchase'),
           reach: num(d.reach),
           ctr: num(d.ctr),
           cpc: num(d.cpc),
