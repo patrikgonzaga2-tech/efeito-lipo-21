@@ -73,6 +73,27 @@ export async function sbInsert(table: string, row: Record<string, unknown>) {
   }
 }
 
+/** Chama uma função do banco (RPC PostgREST). Nunca lança — retorna [] em falha. */
+export async function sbRpc<T = unknown>(fn: string, args: Record<string, unknown> = {}): Promise<T[]> {
+  if (!supabaseConfigured()) return []
+  try {
+    const res = await fetch(restUrl(`rpc/${fn}`), {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(args),
+      cache: 'no-store',
+    })
+    if (!res.ok) {
+      console.error(`[supabase] sbRpc ${fn} HTTP ${res.status}:`, await res.text().catch(() => ''))
+      return []
+    }
+    return (await res.json()) as T[]
+  } catch (e) {
+    console.error('[supabase] sbRpc falhou:', e)
+    return []
+  }
+}
+
 /** Consulta linhas (querystring no padrão PostgREST). Nunca lança — retorna [] em falha. */
 export async function sbSelect<T = unknown>(table: string, query = ''): Promise<T[]> {
   if (!supabaseConfigured()) return []
