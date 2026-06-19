@@ -706,31 +706,17 @@ function useVagas() {
   return vagas
 }
 
-// ── Teste A/B da 1ª tela ────────────────────────────────────────────
-// A = versão original (a que está no ar) · B = versão nova. O sorteio
-// 50/50 é feito UMA vez por sessão pelo beacon em page.tsx (grava
-// 'el_intro_ab' no sessionStorage antes do React montar). Aqui só lemos.
+// ── 1ª tela ─────────────────────────────────────────────────────────
+// O teste A/B terminou (19/06/2026): a variante B converteu melhor e é a
+// única no ar. A IntroA (controle original) fica ARQUIVADA logo abaixo,
+// fora do fluxo, só para registro. Mantemos a tag 'B' no sessionStorage
+// para o dashboard seguir somando as sessões novas na coluna B — o
+// histórico de A continua intacto no banco.
 export const INTRO_AB_KEY = 'el_intro_ab'
-function readIntroAB(): 'A' | 'B' {
-  try {
-    // QA: ?ab=A ou ?ab=B força a versão (e fixa na sessão).
-    const forced = new URLSearchParams(window.location.search).get('ab')
-    if (forced === 'A' || forced === 'B') { sessionStorage.setItem(INTRO_AB_KEY, forced); return forced }
-    const v = sessionStorage.getItem(INTRO_AB_KEY)
-    if (v === 'A' || v === 'B') return v
-    const pick: 'A' | 'B' = Math.random() < 0.5 ? 'A' : 'B' // fallback se o beacon não rodou
-    sessionStorage.setItem(INTRO_AB_KEY, pick)
-    return pick
-  } catch { return 'B' }
-}
 
 function Intro({ onStart }: { onStart: () => void }) {
-  // Resolve a variante só no cliente (sessionStorage). Antes disso, um
-  // placeholder branco evita "hydration mismatch" e o flash é de 1 frame.
-  const [ab, setAb] = useState<'A' | 'B' | null>(null)
-  useEffect(() => { setAb(readIntroAB()) }, [])
-  if (ab === null) return <div className="min-h-[100dvh]" style={{ background: '#fff' }} />
-  return ab === 'A' ? <IntroA onStart={onStart} /> : <IntroB onStart={onStart} />
+  useEffect(() => { try { sessionStorage.setItem(INTRO_AB_KEY, 'B') } catch {} }, [])
+  return <IntroB onStart={onStart} />
 }
 
 function IntroB({ onStart }: { onStart: () => void }) {
@@ -774,7 +760,8 @@ function IntroB({ onStart }: { onStart: () => void }) {
   )
 }
 
-// Variante A — controle: a 1ª tela original, exatamente como está no ar.
+// [ARQUIVADA] Variante A — controle original. Fora do ar desde 19/06/2026
+// (B venceu). Mantida só para referência; não está mais no fluxo do quiz.
 function IntroA({ onStart }: { onStart: () => void }) {
   return (
     <div className="min-h-[100dvh] flex flex-col" style={{ background: 'var(--gd)' }}>

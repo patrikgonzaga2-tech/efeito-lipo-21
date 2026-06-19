@@ -30,8 +30,7 @@ const PAGEVIEW_BEACON = `(function(){try{
       var K='el_quiz_sid',sid=sessionStorage.getItem(K);
       if(!sid){sid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(16).slice(2));sessionStorage.setItem(K,sid);}
       var p=new URLSearchParams(location.search),g=function(k){return p.get(k)||undefined;};
-      var ABK='el_intro_ab',fab=p.get('ab'),ab=(fab==='A'||fab==='B')?fab:sessionStorage.getItem(ABK);
-      if(ab!=='A'&&ab!=='B'){ab=Math.random()<0.5?'A':'B';}
+      var ABK='el_intro_ab',ab='B'; // teste A/B encerrado (19/06/2026): só a B no ar
       sessionStorage.setItem(ABK,ab);
       fetch('/api/quiz',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({
         id:sid,action:'pageview',variante:g('variante'),intro_ab:ab,
