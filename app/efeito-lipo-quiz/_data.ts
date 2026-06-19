@@ -47,10 +47,14 @@ export function checkoutHref(adId?: string | null, xcod?: string | null): string
   return extra.length ? `${CHECKOUT_HREF}&${extra.join('&')}` : CHECKOUT_HREF
 }
 
-// Lê o xcod que o GTM guardou no navegador (cookie/localStorage user_id_purchase).
+// Lê o xcod (id de dedup do Meta). O GTM o injeta na URL da página como `xcod`
+// — fonte mais confiável; por isso lemos da URL primeiro. Fallback: a "gaveta"
+// do navegador (localStorage/cookie user_id_purchase), caso a URL não o tenha.
 export function readXcod(): string | null {
   if (typeof window === 'undefined') return null
   try {
+    const fromUrl = new URLSearchParams(window.location.search).get('xcod')
+    if (fromUrl) return fromUrl
     const ls = window.localStorage.getItem('user_id_purchase')
     if (ls) return ls
     const m = document.cookie.match(/(?:^|;\s*)user_id_purchase=([^;]+)/)

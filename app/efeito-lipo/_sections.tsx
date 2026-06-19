@@ -66,10 +66,13 @@ function CtaPill({
   const [adId, setAdId] = useState<string | null>(null)
   const [xcod, setXcod] = useState<string | null>(null)
   useEffect(() => {
-    setAdId(new URLSearchParams(window.location.search).get('utm_term'))
+    const p = new URLSearchParams(window.location.search)
+    setAdId(p.get('utm_term'))
     try {
+      // xcod: a URL (onde o GTM injeta) é a fonte mais confiável; gaveta é fallback.
       setXcod(
-        window.localStorage.getItem('user_id_purchase') ||
+        p.get('xcod') ||
+          window.localStorage.getItem('user_id_purchase') ||
           (document.cookie.match(/(?:^|;\s*)user_id_purchase=([^;]+)/)?.[1] ?? null),
       )
     } catch {}
