@@ -12,6 +12,7 @@ const GROUPS: { label: string; tabs: { key: string; label: string; href: string 
       { key: 'funil', label: 'Funil', href: `${BASE}/funil` },
       { key: 'quiz', label: 'Quiz', href: `${BASE}/quiz` },
       { key: 'anuncios', label: 'Anúncios', href: `${BASE}/anuncios` },
+      { key: 'utm', label: 'Origem (UTM)', href: `${BASE}/utm` },
     ],
   },
 ]
