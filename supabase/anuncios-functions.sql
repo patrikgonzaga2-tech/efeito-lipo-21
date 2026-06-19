@@ -17,17 +17,36 @@ create index if not exists meta_ads_campaign_idx on public.meta_ads(campaign_id)
 create index if not exists meta_ads_date_idx     on public.meta_ads(date desc);
 alter table public.meta_ads enable row level security;
 
--- Agrega por anúncio num período (métricas do Meta; não há venda real por anúncio).
-create or replace function public.ranking_anuncios(p_since timestamptz, p_until timestamptz)
+-- Funil completo por CONJUNTO (do meta_insights) — usado nas tabelas da aba
+-- Anúncios (campanhas = soma dos conjuntos; conjuntos = direto).
+drop function if exists public.ranking_conjuntos(timestamptz, timestamptz);
+create function public.ranking_conjuntos(p_since timestamptz, p_until timestamptz)
+returns table (
+  adset_id text, adset_name text, campaign_id text, campaign_name text,
+  spend numeric, impressions bigint, link_clicks bigint, lp_views bigint, ic bigint, purchases bigint, purchase_value numeric
+)
+language sql stable as $a$
+  select ad_id, max(adset_name), max(campaign_id), max(campaign_name),
+         sum(spend), sum(impressions), sum(link_clicks), sum(lp_views), sum(ic), sum(purchases), sum(purchase_value)
+  from public.meta_insights
+  where date >= (p_since at time zone 'America/Sao_Paulo')::date
+    and date <= (p_until at time zone 'America/Sao_Paulo')::date
+  group by ad_id
+$a$;
+
+-- Funil completo por ANÚNCIO (do meta_ads). Conversão = compras (pixel); não
+-- há venda real por anúncio (utm_term é adset.id).
+drop function if exists public.ranking_anuncios(timestamptz, timestamptz);
+create function public.ranking_anuncios(p_since timestamptz, p_until timestamptz)
 returns table (
   ad_id text, ad_name text, adset_name text, campaign_name text,
-  spend numeric, impressions bigint, link_clicks bigint, ic bigint, purchases bigint, purchase_value numeric
+  spend numeric, impressions bigint, link_clicks bigint, lp_views bigint, ic bigint, purchases bigint, purchase_value numeric
 )
-language sql stable as $fn$
+language sql stable as $b$
   select ad_id, max(ad_name), max(adset_name), max(campaign_name),
-         sum(spend), sum(impressions), sum(link_clicks), sum(ic), sum(purchases), sum(purchase_value)
+         sum(spend), sum(impressions), sum(link_clicks), sum(lp_views), sum(ic), sum(purchases), sum(purchase_value)
   from public.meta_ads
   where date >= (p_since at time zone 'America/Sao_Paulo')::date
     and date <= (p_until at time zone 'America/Sao_Paulo')::date
   group by ad_id
-$fn$;
+$b$;
