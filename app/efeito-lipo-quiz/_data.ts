@@ -28,10 +28,37 @@ export const IMG = {
 
 export type ImgKey = keyof typeof IMG
 
-// Checkout Hotmart — já marcado como variante do quiz para rastreio.
-// (o script de UTM do layout acrescenta utm_source/sck do anúncio sozinho)
+// Checkout Hotmart — o sck fixo (efeito-lipo-quiz) identifica o FUNIL no banco.
 export const CHECKOUT_HREF =
   'https://pay.hotmart.com/J105938667T?checkoutMode=10&variante=efeito-lipo-quiz&sck=efeito-lipo-quiz'
+
+// Monta o link de checkout colando dois rastreios que a Hotmart devolve em
+// purchase.origin → tabela vendas:
+//  • src  = ID do anúncio do Meta (chega na URL como utm_term) → tracking_src
+//  • xcod = id de deduplicação que o GTM gerou e guardou em user_id_purchase
+//           (o MESMO id enviado ao Meta) → tracking_xcod. Como o botão do quiz
+//           nasce tarde (depois das telas), o GTM não o alcança; por isso lemos
+//           o xcod da "gaveta" do navegador e colamos aqui na mão.
+// Cada parâmetro só entra se existir — nunca suja o link com valor vazio.
+export function checkoutHref(adId?: string | null, xcod?: string | null): string {
+  const extra: string[] = []
+  if (adId) extra.push(`src=${encodeURIComponent(adId)}`)
+  if (xcod) extra.push(`xcod=${encodeURIComponent(xcod)}`)
+  return extra.length ? `${CHECKOUT_HREF}&${extra.join('&')}` : CHECKOUT_HREF
+}
+
+// Lê o xcod que o GTM guardou no navegador (cookie/localStorage user_id_purchase).
+export function readXcod(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const ls = window.localStorage.getItem('user_id_purchase')
+    if (ls) return ls
+    const m = document.cookie.match(/(?:^|;\s*)user_id_purchase=([^;]+)/)
+    return m ? decodeURIComponent(m[1]) : null
+  } catch {
+    return null
+  }
+}
 
 export type BodyVariant = 'lean' | 'bloated' | 'soft' | 'over' | 'much'
 export type RegionKey = 'belly' | 'arms' | 'waist' | 'hips' | 'full' | 'none'

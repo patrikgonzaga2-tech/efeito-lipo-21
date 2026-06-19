@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import {
-  CHECKOUT_HREF, IMG, INSIGHT, LAURA_PARAGRAFOS, PROVA_GRID,
+  CHECKOUT_HREF, checkoutHref, readXcod, IMG, INSIGHT, LAURA_PARAGRAFOS, PROVA_GRID,
   RESULT_MARCOS, SALES, STEPS,
 } from './_data'
 import type { ImgKey, Step } from './_data'
@@ -539,6 +539,15 @@ function useCountdown(start = 600) {
 function Sales({ perfil, onCheckout }: { perfil: InnerProps['perfil']; onCheckout: () => void }) {
   const timer = useCountdown(600)
 
+  // Link de checkout com o id do anúncio (utm_term) no src. Começa com o link
+  // fixo (igual no servidor, evita erro de hidratação) e, já no navegador,
+  // acrescenta o src quando o anúncio trouxe o id na URL.
+  const [href, setHref] = useState(CHECKOUT_HREF)
+  useEffect(() => {
+    const adId = new URLSearchParams(window.location.search).get('utm_term')
+    setHref(checkoutHref(adId, readXcod()))
+  }, [])
+
   const Price = () => (
     <div className="mx-auto rounded-2xl p-5" style={{ maxWidth: 360, background: 'rgba(245,113,0,.06)', border: '1px solid rgba(245,113,0,.2)' }}>
       <ul className="space-y-2">
@@ -572,7 +581,7 @@ function Sales({ perfil, onCheckout }: { perfil: InnerProps['perfil']; onCheckou
             : <>Com base no seu perfil, você vai receber tudo que precisa para perder até 8kg em 21 dias — sem academia, sem passar fome e sem as canetinhas caras.</>}
         </p>
 
-        <div className="mt-7"><a href={CHECKOUT_HREF} onClick={onCheckout} target="_blank" rel="noopener noreferrer" className="block"><CtaButton full glow dataLabel="topo">Quero meu protocolo agora</CtaButton></a></div>
+        <div className="mt-7"><a href={href} onClick={onCheckout} target="_blank" rel="noopener noreferrer" className="block"><CtaButton full glow dataLabel="topo">Quero meu protocolo agora</CtaButton></a></div>
 
         {/* Antes / Depois */}
         <SectionTitle>Antes e depois do Efeito Lipo</SectionTitle>
@@ -639,7 +648,7 @@ function Sales({ perfil, onCheckout }: { perfil: InnerProps['perfil']; onCheckou
           <div className="inline-block mb-4" style={{ fontSize: 13, fontWeight: 800, color: '#c0392b', background: 'rgba(197,57,0,.08)', padding: '7px 16px', borderRadius: 99 }}>🔴 Válido apenas enquanto esta página estiver aberta · {timer}</div>
         </div>
         <Price />
-        <div className="mt-6"><a href={CHECKOUT_HREF} onClick={onCheckout} target="_blank" rel="noopener noreferrer" className="block"><CtaButton full glow dataLabel="preco">Quero meu protocolo agora</CtaButton></a></div>
+        <div className="mt-6"><a href={href} onClick={onCheckout} target="_blank" rel="noopener noreferrer" className="block"><CtaButton full glow dataLabel="preco">Quero meu protocolo agora</CtaButton></a></div>
         <p className="text-center" style={{ fontSize: 12, color: 'var(--mute)', marginTop: 12, lineHeight: 1.6 }}>🔒 Pagamento 100% seguro via Hotmart · Acesso imediato · Pix ou cartão</p>
 
         {/* Garantia */}
@@ -655,7 +664,7 @@ function Sales({ perfil, onCheckout }: { perfil: InnerProps['perfil']; onCheckou
         {/* CTA final */}
         <div className="text-center mt-9">
           <p className="font-display" style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>Protocolo Efeito Lipo 21 <span style={{ color: 'var(--mute)', textDecoration: 'line-through' }}>R$ 297</span> → <span style={{ color: 'var(--o)' }}>R$ 37 à vista</span></p>
-          <div className="mt-4"><a href={CHECKOUT_HREF} onClick={onCheckout} target="_blank" rel="noopener noreferrer" className="block"><CtaButton full glow variant="green" dataLabel="final">Garantir minha vaga agora</CtaButton></a></div>
+          <div className="mt-4"><a href={href} onClick={onCheckout} target="_blank" rel="noopener noreferrer" className="block"><CtaButton full glow variant="green" dataLabel="final">Garantir minha vaga agora</CtaButton></a></div>
           <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 12, lineHeight: 1.6 }}>🔒 Pagamento 100% seguro · Acesso imediato após confirmação · Pix ou cartão</p>
         </div>
 

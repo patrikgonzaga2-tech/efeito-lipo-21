@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Script from 'next/script'
 import { usePathname } from 'next/navigation'
@@ -58,9 +58,27 @@ function CtaPill({
     pathname === '/efeito-lipo-a' || pathname === '/efeito-lipo-b'
       ? pathname.slice(1)
       : null
-  const href = variante
+  // Rastreio no checkout (lido no navegador p/ não dar erro de hidratação):
+  //  • src  = ID do anúncio (utm_term do Meta)
+  //  • xcod = id de deduplicação que o GTM guardou em user_id_purchase. Lemos e
+  //    recolocamos porque o React reescreve o href DEPOIS do GTM — sem isso,
+  //    apagaríamos o xcod que o GTM tinha colocado.
+  const [adId, setAdId] = useState<string | null>(null)
+  const [xcod, setXcod] = useState<string | null>(null)
+  useEffect(() => {
+    setAdId(new URLSearchParams(window.location.search).get('utm_term'))
+    try {
+      setXcod(
+        window.localStorage.getItem('user_id_purchase') ||
+          (document.cookie.match(/(?:^|;\s*)user_id_purchase=([^;]+)/)?.[1] ?? null),
+      )
+    } catch {}
+  }, [])
+  let href = variante
     ? `${CHECKOUT_HREF}&variante=${variante}&sck=${variante}`
     : CHECKOUT_HREF
+  if (adId) href += `&src=${encodeURIComponent(adId)}`
+  if (xcod) href += `&xcod=${encodeURIComponent(xcod)}`
 
   return (
     <a
