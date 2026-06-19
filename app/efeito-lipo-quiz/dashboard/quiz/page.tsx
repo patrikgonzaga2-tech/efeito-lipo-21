@@ -178,8 +178,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Sessões sem intro_ab (anteriores ao teste) ficam de fora da comparação.
   const abStats = (['A', 'B'] as const).map((v) => {
     const rows = sessions.filter((s) => s.intro_ab === v)
-    const views = rows.length
     const startsV = rows.filter((s) => s.status !== 'pageview').length
+    // Page view REAL (Meta) estimado pra versão: total do Meta repartido pela
+    // fatia de sessões da versão (o sorteio é 50/50, então é proporcional).
+    const views = total > 0 ? Math.round(realPV * (rows.length / total)) : 0
     return { v, views, starts: startsV, rate: pct(startsV, views), label: v === 'A' ? 'original (controle)' : 'nova' }
   })
   const abLeader = abStats[0].views && abStats[1].views
@@ -248,14 +250,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <div className="font-display" style={{ fontSize: 40, fontWeight: 800, color: v === 'A' ? 'var(--gd)' : 'var(--o)', lineHeight: 1.1, marginTop: 6 }}>{rate}%</div>
                 <div style={{ fontSize: 12.5, color: 'var(--sub)' }}>taxa de início (clicaram em começar)</div>
                 <div style={{ fontSize: 13, color: 'var(--sub)', marginTop: 12 }}>
-                  <strong style={{ color: 'var(--ink)' }}>{views}</strong> visualizações · <strong style={{ color: 'var(--ink)' }}>{st}</strong> inícios
+                  ~<strong style={{ color: 'var(--ink)' }}>{views}</strong> page views (Meta) · <strong style={{ color: 'var(--ink)' }}>{st}</strong> inícios
                 </div>
               </div>
             )
           })}
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 10 }}>
-          A = 1ª tela original (controle) · B = 1ª tela nova. Sorteio 50/50 por sessão. Sessões abertas antes do teste não têm versão e ficam fora desta comparação.
+          A = 1ª tela original (controle) · B = 1ª tela nova. Sorteio 50/50 por sessão. A taxa usa o <strong>page view real do Meta</strong> repartido entre A e B na proporção das sessões (o Meta não separa A/B nativamente — é estimativa proporcional). Sessões anteriores ao teste ficam fora.
         </div>
       </Section>
 
