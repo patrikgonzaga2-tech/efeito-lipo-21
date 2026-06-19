@@ -17,6 +17,13 @@ create index if not exists meta_ads_campaign_idx on public.meta_ads(campaign_id)
 create index if not exists meta_ads_date_idx     on public.meta_ads(date desc);
 alter table public.meta_ads enable row level security;
 
+-- Status atual (ativo/pausado/reprovado) de conjuntos e anúncios. O robô faz
+-- upsert por id a cada run (effective_status do Meta). Não é por data.
+create table if not exists public.meta_status (
+  id text primary key, level text, status text, updated_at timestamptz not null default now()
+);
+alter table public.meta_status enable row level security;
+
 -- Funil completo por CONJUNTO (do meta_insights) — usado nas tabelas da aba
 -- Anúncios (campanhas = soma dos conjuntos; conjuntos = direto).
 drop function if exists public.ranking_conjuntos(timestamptz, timestamptz);

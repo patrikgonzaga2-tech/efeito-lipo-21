@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { sbRpc, supabaseConfigured } from '@/lib/supabase'
+import { sbRpc, sbSelect, supabaseConfigured } from '@/lib/supabase'
 import Login from '../_login'
 import { DashboardShell } from '../_shell'
 import { PeriodFilter, resolvePeriod, type SearchParams } from '../_period'
@@ -18,6 +18,17 @@ const brl = (n: number) => 'R$ ' + (Math.round(n * 100) / 100).toLocaleString('p
 const brl0 = (n: number) => 'R$ ' + Math.round(n).toLocaleString('pt-BR')
 const int = (n: number) => Math.round(n).toLocaleString('pt-BR')
 const pct1 = (n: number, d: number) => (d > 0 ? (Math.round((n / d) * 1000) / 10).toLocaleString('pt-BR') + '%' : '—')
+
+// Selo de status (ativo/pausado/reprovado) a partir do effective_status do Meta.
+function StatusBadge({ status }: { status?: string }) {
+  const s = status || ''
+  let txt = 'Pausado', bg = 'rgba(0,0,0,.06)', fg = 'var(--mute)'
+  if (s === 'ACTIVE') { txt = 'Ativo'; bg = 'rgba(0,114,38,.12)'; fg = 'var(--g)' }
+  else if (s === 'DISAPPROVED') { txt = 'Reprovado'; bg = 'rgba(192,57,43,.1)'; fg = '#c0392b' }
+  else if (!s) { txt = '—'; bg = 'transparent' }
+  return <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: bg, color: fg, whiteSpace: 'nowrap' }}>{txt}</span>
+}
+const isActive = (s?: string) => s === 'ACTIVE'
 
 const thL: React.CSSProperties = { padding: '9px 10px', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--mute)', textAlign: 'left', whiteSpace: 'nowrap' }
 const thR: React.CSSProperties = { ...thL, textAlign: 'right' }
@@ -75,18 +86,21 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
 
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
-  const [conjuntos, ads] = await Promise.all([
+  const [conjuntos, ads, statusList] = await Promise.all([
     sbRpc<Conj>('ranking_conjuntos', { p_since: since, p_until: until }),
     sbRpc<Ad>('ranking_anuncios', { p_since: since, p_until: until }),
+    sbSelect<{ id: string; status: string }>('meta_status', 'select=id,status'),
   ])
+  const statusOf = new Map(statusList.map((s) => [s.id, s.status]))
 
-  // Campanhas = soma os conjuntos por campanha.
-  const campMap = new Map<string, { name: string } & Funnel>()
+  // Campanhas = soma os conjuntos por campanha (e fica "ativa" se algum conjunto estiver).
+  const campMap = new Map<string, { name: string; active: boolean } & Funnel>()
   for (const c of conjuntos) {
     if (N(c.spend) <= 0) continue
     const key = c.campaign_id || c.adset_id
-    const e = campMap.get(key) || { name: c.campaign_name || '(sem campanha)', spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases: 0, purchase_value: 0 }
+    const e = campMap.get(key) || { name: c.campaign_name || '(sem campanha)', active: false, spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases: 0, purchase_value: 0 }
     e.spend += N(c.spend); e.impressions += N(c.impressions); e.link_clicks += N(c.link_clicks); e.lp_views += N(c.lp_views); e.ic += N(c.ic); e.purchases += N(c.purchases); e.purchase_value += N(c.purchase_value)
+    if (isActive(statusOf.get(c.adset_id))) e.active = true
     campMap.set(key, e)
   }
   const campanhas = [...campMap.values()].sort((a, b) => b.spend - a.spend)
@@ -99,34 +113,37 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
       <p style={{ fontSize: 13.5, color: 'var(--sub)', marginBottom: 18 }}>Funil completo por campanha, conjunto e anúncio. Conversão = compras (pixel do Meta).</p>
       <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} />
 
-      <Table title="Campanhas" note="Ordenadas por investimento" leadCols={['Campanha']}>
-        {campanhas.length === 0 && <tr><td colSpan={12} style={{ ...tdL, textAlign: 'center', color: 'var(--mute)', padding: 20 }}>Sem dados no período.</td></tr>}
+      <Table title="Campanhas" note="Ordenadas por investimento" leadCols={['Campanha', 'Status']}>
+        {campanhas.length === 0 && <tr><td colSpan={13} style={{ ...tdL, textAlign: 'center', color: 'var(--mute)', padding: 20 }}>Sem dados no período.</td></tr>}
         {campanhas.map((c, i) => (
           <tr key={i} style={{ borderTop: '1px solid rgba(0,0,0,.05)' }}>
             <td style={{ ...tdL, fontWeight: 600, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</td>
+            <td style={tdL}><StatusBadge status={c.active ? 'ACTIVE' : 'PAUSED'} /></td>
             {metricCells(c)}
           </tr>
         ))}
       </Table>
 
-      <Table title="Conjuntos" note="Ordenados por investimento" leadCols={['Conjunto', 'Campanha']}>
-        {conj.length === 0 && <tr><td colSpan={13} style={{ ...tdL, textAlign: 'center', color: 'var(--mute)', padding: 20 }}>Sem dados no período.</td></tr>}
+      <Table title="Conjuntos" note="Ordenados por investimento" leadCols={['Conjunto', 'Campanha', 'Status']}>
+        {conj.length === 0 && <tr><td colSpan={14} style={{ ...tdL, textAlign: 'center', color: 'var(--mute)', padding: 20 }}>Sem dados no período.</td></tr>}
         {conj.map((c) => (
           <tr key={c.adset_id} style={{ borderTop: '1px solid rgba(0,0,0,.05)' }}>
             <td style={{ ...tdL, fontWeight: 600 }}>{c.adset_name || c.adset_id}</td>
             <td style={{ ...tdL, color: 'var(--sub)', fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.campaign_name || '—'}</td>
+            <td style={tdL}><StatusBadge status={statusOf.get(c.adset_id)} /></td>
             {metricCells(c)}
           </tr>
         ))}
       </Table>
 
-      <Table title="Melhores anúncios" note="Top 40 por compras (pixel)" leadCols={['#', 'Anúncio', 'Conjunto']}>
-        {adsTop.length === 0 && <tr><td colSpan={14} style={{ ...tdL, textAlign: 'center', color: 'var(--mute)', padding: 20 }}>Sem dados no período.</td></tr>}
+      <Table title="Melhores anúncios" note="Top 40 por compras (pixel)" leadCols={['#', 'Anúncio', 'Conjunto', 'Status']}>
+        {adsTop.length === 0 && <tr><td colSpan={15} style={{ ...tdL, textAlign: 'center', color: 'var(--mute)', padding: 20 }}>Sem dados no período.</td></tr>}
         {adsTop.map((a, i) => (
           <tr key={a.ad_id} style={{ borderTop: '1px solid rgba(0,0,0,.05)' }}>
             <td style={{ ...tdL, color: 'var(--mute)', fontWeight: 700 }}>{i + 1}</td>
             <td style={{ ...tdL, fontWeight: 600 }}>{a.ad_name || a.ad_id}</td>
             <td style={{ ...tdL, color: 'var(--sub)', fontSize: 12 }}>{a.adset_name || '—'}</td>
+            <td style={tdL}><StatusBadge status={statusOf.get(a.ad_id)} /></td>
             {metricCells(a)}
           </tr>
         ))}

@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
   const adFields = 'ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,inline_link_clicks,ctr,cpc,cpm,actions,action_values,date_start'
   const rows: Record<string, unknown>[] = []      // nível conjunto → meta_insights
   const adRows: Record<string, unknown>[] = []    // nível anúncio → meta_ads
+  const statusRows: Record<string, unknown>[] = [] // ativo/pausado → meta_status
   const erros: { ad_id: string; error: unknown }[] = []
   const nowIso = new Date().toISOString()
 
@@ -135,6 +136,19 @@ Deno.serve(async (req) => {
           })
         }
       }
+
+      // 2c) Status (ativo/pausado) do conjunto e dos seus anúncios.
+      const stUrl =
+        `${API}/${adId}?fields=effective_status,ads.limit(200){id,effective_status}` +
+        `&access_token=${encodeURIComponent(META_TOKEN)}`
+      const stRes = await fetch(stUrl)
+      const stJson = await stRes.json()
+      if (stRes.ok && !stJson.error) {
+        statusRows.push({ id: adId, level: 'adset', status: stJson.effective_status ?? null, updated_at: nowIso })
+        for (const a of stJson.ads?.data ?? []) {
+          statusRows.push({ id: a.id, level: 'ad', status: a.effective_status ?? null, updated_at: nowIso })
+        }
+      }
     } catch (e) {
       erros.push({ ad_id: adId, error: String(e) })
     }
@@ -168,5 +182,16 @@ Deno.serve(async (req) => {
     }
   }
 
-  return Response.json({ ok: true, since, until, conjuntos: adIds.length, gravadas: rows.length, anuncios: adRows.length, falhas: erros.length })
+  // 3c) Upsert do status (ativo/pausado), merge por id.
+  if (statusRows.length > 0) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/meta_status?on_conflict=id`, {
+        method: 'POST',
+        headers: { ...sbHeaders, Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(statusRows),
+      })
+    } catch (_e) { /* status é acessório; não falha o run */ }
+  }
+
+  return Response.json({ ok: true, since, until, conjuntos: adIds.length, gravadas: rows.length, anuncios: adRows.length, status: statusRows.length, falhas: erros.length })
 })
