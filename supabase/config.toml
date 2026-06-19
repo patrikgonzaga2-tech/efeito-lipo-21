@@ -1,0 +1,9 @@
+# Configuração do projeto Supabase (Corpo Feliz / Efeito Lipo).
+# project_id = referência do projeto (vem da URL do Supabase).
+project_id = "fjlbvoephhextnxemygf"
+
+# Webhook da Hotmart: a Hotmart não faz login, então essa função NÃO pode
+# exigir um token de sessão (JWT). A segurança dela é o "hottok" próprio,
+# validado dentro do código.
+[functions.hotmart-webhook]
+verify_jwt = false
