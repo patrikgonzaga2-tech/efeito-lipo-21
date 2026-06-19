@@ -62,7 +62,10 @@ Deno.serve(async (req) => {
     const a = (arr ?? []).find((x) => x.action_type === type)
     return a ? Number(a.value) : null
   }
-  const rows: Record<string, unknown>[] = []
+  // Campos da chamada level=ad (1 linha por anúncio/dia dentro do conjunto).
+  const adFields = 'ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,inline_link_clicks,ctr,cpc,cpm,actions,action_values,date_start'
+  const rows: Record<string, unknown>[] = []      // nível conjunto → meta_insights
+  const adRows: Record<string, unknown>[] = []    // nível anúncio → meta_ads
   const erros: { ad_id: string; error: unknown }[] = []
   const nowIso = new Date().toISOString()
 
@@ -100,6 +103,38 @@ Deno.serve(async (req) => {
           updated_at: nowIso,
         })
       }
+
+      // 2b) Anúncios do conjunto (level=ad) → meta_ads.
+      const adUrl =
+        `${API}/${adId}/insights?level=ad&fields=${adFields}` +
+        `&time_range=${timeRange}&time_increment=1&limit=500` +
+        `&access_token=${encodeURIComponent(META_TOKEN)}`
+      const adRes = await fetch(adUrl)
+      const adJson = await adRes.json()
+      if (adRes.ok && !adJson.error) {
+        for (const a of adJson.data ?? []) {
+          adRows.push({
+            ad_id: a.ad_id,
+            date: a.date_start,
+            ad_name: a.ad_name ?? null,
+            adset_id: a.adset_id ?? adId,
+            adset_name: a.adset_name ?? null,
+            campaign_id: a.campaign_id ?? null,
+            campaign_name: a.campaign_name ?? null,
+            spend: num(a.spend),
+            impressions: num(a.impressions),
+            link_clicks: num(a.inline_link_clicks) ?? act(a.actions, 'link_click'),
+            lp_views: act(a.actions, 'landing_page_view'),
+            ic: act(a.actions, 'initiate_checkout'),
+            purchases: act(a.actions, 'purchase'),
+            purchase_value: act(a.action_values, 'purchase'),
+            ctr: num(a.ctr),
+            cpc: num(a.cpc),
+            cpm: num(a.cpm),
+            updated_at: nowIso,
+          })
+        }
+      }
     } catch (e) {
       erros.push({ ad_id: adId, error: String(e) })
     }
@@ -119,5 +154,19 @@ Deno.serve(async (req) => {
     }
   }
 
-  return Response.json({ ok: true, since, until, anuncios: adIds.length, gravadas: rows.length, falhas: erros.length })
+  // 3b) Upsert dos anúncios.
+  if (adRows.length > 0) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/meta_ads?on_conflict=ad_id,date`, {
+        method: 'POST',
+        headers: { ...sbHeaders, Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(adRows),
+      })
+      if (!res.ok) return Response.json({ ok: false, step: 'gravar-ads', error: await res.text() }, { status: 502 })
+    } catch (e) {
+      return Response.json({ ok: false, step: 'gravar-ads', error: String(e) }, { status: 502 })
+    }
+  }
+
+  return Response.json({ ok: true, since, until, conjuntos: adIds.length, gravadas: rows.length, anuncios: adRows.length, falhas: erros.length })
 })
