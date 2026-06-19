@@ -170,10 +170,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // 'pageview' e vira 'started'/'completed'). 'total' = pageviews: é o
   // denominador do topo do funil.
   const total = sessions.length
-  const pageviews = total
   const starts = sessions.filter((s) => s.status !== 'pageview').length
   const completed = sessions.filter((s) => s.status === 'completed').length
-  const checkout = sessions.filter((s) => s.checkout_clicked).length
   const reachedSales = sessions.filter((s) => s.reached_index >= 24).length
 
   // ── Teste A/B da 1ª tela ──────────────────────────────────────────
@@ -227,26 +225,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <DashboardShell active="quiz">
       <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} count={total} />
-
-      <Section title="Números reais (Meta Ads + vendas)">
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))' }}>
-          <Card label="Page view (Meta)" value={String(realPV)} sub="landing page view real" />
-          <Card label="Initiate checkout (Meta)" value={String(realIC)} sub="evento do pixel" accent="var(--gd)" />
-          <Card label="Compras (Meta)" value={String(realCompras)} sub="via pixel do Meta" accent="var(--o)" />
-          <Card label="Vendas (Hotmart)" value={String(realVendas)} sub="reais · desde 19/06" accent="var(--g)" />
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>Estes são os valores reais do Meta/Hotmart no período. As métricas abaixo são o rastreio próprio do quiz (pode divergir do Meta).</div>
-      </Section>
-
-      <Section title="Rastreio próprio do quiz">
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))' }}>
-        <Card label="Visualizações" value={String(pageviews)} sub="entraram na 1ª tela" />
-        <Card label="Inícios" value={String(starts)} sub={`${pct(starts, pageviews)}% clicaram em iniciar`} accent="var(--gd)" />
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(168px,1fr))' }}>
+        <Card label="Visualizações" value={String(realPV)} sub="page views reais (Meta)" />
+        <Card label="Inícios" value={String(starts)} sub={`${pct(starts, realPV)}% das visualizações`} accent="var(--gd)" />
         <Card label="Conclusões" value={String(completed)} sub={`${pct(completed, starts)}% de quem iniciou`} accent="var(--g)" />
-        <Card label="Chegaram à venda" value={String(reachedSales)} sub={`${pct(reachedSales, pageviews)}% das views`} />
-        <Card label="Cliques no checkout" value={String(checkout)} sub={`${pct(checkout, pageviews)}% das views`} accent="var(--o)" />
+        <Card label="Chegaram à venda" value={String(reachedSales)} sub={`${pct(reachedSales, realPV)}% das visualizações`} />
+        <Card label="Initiate checkout" value={String(realIC)} sub={`${pct(realIC, realPV)}% das visualizações`} accent="var(--gd)" />
+        <Card label="Compras" value={String(realCompras)} sub={`${pct(realCompras, realIC)}% dos checkouts · pixel`} accent="var(--o)" />
+        <Card label="Vendas" value={String(realVendas)} sub="reais (Hotmart) · desde 19/06" accent="var(--g)" />
       </div>
-      </Section>
 
       <Section title="Teste A/B — 1ª tela">
         <div className="grid gap-4 md:grid-cols-2">
