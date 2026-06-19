@@ -171,8 +171,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // denominador do topo do funil.
   const total = sessions.length
   const starts = sessions.filter((s) => s.status !== 'pageview').length
-  const completed = sessions.filter((s) => s.status === 'completed').length
-  const reachedSales = sessions.filter((s) => s.reached_index >= 24).length
 
   // ── Teste A/B da 1ª tela ──────────────────────────────────────────
   // A = versão original (controle, a que estava no ar) · B = versão nova.
@@ -189,8 +187,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     : null
 
   // Funil por etapa (quantas sessões alcançaram cada tela)
-  const funnelSteps = STEPS.map((s, i) => ({ i, label: `${i}. ${stepLabel(s)}`, count: sessions.filter((x) => x.reached_index >= i).length }))
+  // Tela 0 (início) = visualizações reais do Meta (page view). As demais telas
+  // vêm do rastreio do quiz (quem avançou). Denominador do funil = page view real.
+  const funnelSteps = STEPS.map((s, i) => ({ i, label: `${i}. ${stepLabel(s)}`, count: i === 0 ? realPV : sessions.filter((x) => x.reached_index >= i).length }))
     .filter((f) => f.i <= 24)
+  const funnelTotal = realPV || total
 
   // Distribuição de respostas (perguntas single/multi)
   const questions = STEPS.filter((s): s is Extract<Step, { kind: 'single' | 'multi' }> => s.kind === 'single' || s.kind === 'multi')
@@ -228,8 +229,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(168px,1fr))' }}>
         <Card label="Visualizações" value={String(realPV)} sub="page views reais (Meta)" />
         <Card label="Inícios" value={String(starts)} sub={`${pct(starts, realPV)}% das visualizações`} accent="var(--gd)" />
-        <Card label="Conclusões" value={String(completed)} sub={`${pct(completed, starts)}% de quem iniciou`} accent="var(--g)" />
-        <Card label="Chegaram à venda" value={String(reachedSales)} sub={`${pct(reachedSales, realPV)}% das visualizações`} />
         <Card label="Initiate checkout" value={String(realIC)} sub={`${pct(realIC, realPV)}% das visualizações`} accent="var(--gd)" />
         <Card label="Compras" value={String(realCompras)} sub={`${pct(realCompras, realIC)}% dos checkouts · pixel`} accent="var(--o)" />
         <Card label="Vendas" value={String(realVendas)} sub="reais (Hotmart) · desde 19/06" accent="var(--g)" />
@@ -262,7 +261,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <Section title="Funil — abandono por tela">
         <div className="rounded-2xl p-5 space-y-2" style={{ background: '#fff', border: '1px solid rgba(0,0,0,.07)' }}>
-          {funnelSteps.map((f) => <Bar key={f.i} label={f.label} value={f.count} total={total} color={f.i >= 24 ? 'var(--g)' : 'var(--o)'} />)}
+          {funnelSteps.map((f) => <Bar key={f.i} label={f.label} value={f.count} total={funnelTotal} color={f.i >= 24 ? 'var(--g)' : 'var(--o)'} />)}
         </div>
       </Section>
 
