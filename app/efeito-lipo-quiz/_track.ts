@@ -31,6 +31,9 @@ export function captureContext(): QuizContext {
   if (typeof window === 'undefined') return {}
   const p = new URLSearchParams(window.location.search)
   const g = (k: string) => p.get(k) || undefined
+  // Redundância: persiste o id do anúncio na gaveta já no início do quiz, pro
+  // botão de compra achá-lo no clique mesmo se a URL sumir depois.
+  try { const t = g('utm_term'); if (t) sessionStorage.setItem('el_utm_term', t) } catch { /* ignore */ }
   return {
     variante: g('variante'),
     utm_source: g('utm_source'),

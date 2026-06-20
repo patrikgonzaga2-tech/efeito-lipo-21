@@ -23,6 +23,10 @@ export const metadata = {
 // NÃO rebaixa o status. DWELL é ajustável — medir e calibrar pra bater ~Meta.
 const PAGEVIEW_BEACON = `(function(){try{
   if(window.__elqpv)return;window.__elqpv=1;
+  // Guarda o id do anúncio (utm_term) e o xcod na ENTRADA, na hora — assim o
+  // botão de compra (que nasce lá no fim do quiz) sempre acha o rastreio, mesmo
+  // que a URL chegue limpa em navegador in-app. Roda fora do gate de dwell.
+  try{var sp0=new URLSearchParams(location.search),ut=sp0.get('utm_term');if(ut)sessionStorage.setItem('el_utm_term',ut);var xc=sp0.get('xcod');if(xc)localStorage.setItem('user_id_purchase',xc);}catch(e){}
   var DWELL=3000,t=null,done=false;
   function send(){
     if(done)return;done=true;

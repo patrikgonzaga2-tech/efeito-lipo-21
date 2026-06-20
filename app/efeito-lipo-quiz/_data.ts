@@ -47,6 +47,24 @@ export function checkoutHref(adId?: string | null, xcod?: string | null): string
   return extra.length ? `${CHECKOUT_HREF}&${extra.join('&')}` : CHECKOUT_HREF
 }
 
+// Chave da "gaveta" do navegador onde guardamos o id do anúncio (utm_term) já
+// na ENTRADA do quiz. Lê-la no clique é mais confiável que reler a URL ao vivo:
+// em navegador in-app (IG/Android) e recargas a URL pode chegar sem os
+// parâmetros, mas a sessão já guardou o valor. Fallback: a própria URL.
+export const AD_ID_KEY = 'el_utm_term'
+export function readAdId(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const fromStore = sessionStorage.getItem(AD_ID_KEY)
+    if (fromStore) return fromStore
+    const fromUrl = new URLSearchParams(window.location.search).get('utm_term')
+    if (fromUrl) { try { sessionStorage.setItem(AD_ID_KEY, fromUrl) } catch {} }
+    return fromUrl
+  } catch {
+    return null
+  }
+}
+
 // Lê o xcod (id de dedup do Meta). O GTM o injeta na URL da página como `xcod`
 // — fonte mais confiável; por isso lemos da URL primeiro. Fallback: a "gaveta"
 // do navegador (localStorage/cookie user_id_purchase), caso a URL não o tenha.
