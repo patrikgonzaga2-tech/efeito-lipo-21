@@ -53,6 +53,8 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   const refPct = pct1(refQtd, vendas + refQtd)
   // % de taxas: quanto do bruto a Hotmart/afins comem antes de cair na conta.
   const taxasPct = pct1(receita - liquido, receita)
+  // Margem % = líquido ÷ bruto: quanto do faturamento sobra após as taxas.
+  const margem = div(liquido, receita)
 
   const roas = div(receita, spend) // ROAS no bruto (padrão de mercado)
   const lucro = liquido - spend    // lucro REAL: o que entrou (líquido) menos o investido
@@ -84,6 +86,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
         <Card label="Faturamento" value={brl0(receita)} sub={`bruto · ${vendas} vendas · ticket ${vendas ? brl(ticket) : '—'}`} accent="var(--g)" />
         <Card label="Líquido" value={brl0(liquido)} sub={`após taxas Hotmart${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
+        <Card label="Margem" value={receita > 0 ? pct1(liquido, receita) : '—'} sub="líquido ÷ bruto (sobra das taxas)" accent={receita > 0 ? (margem >= 0.8 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
         <Card label="Lucro" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
         <Card label="ROAS" value={receita > 0 ? roas.toFixed(2) + 'x' : '—'} sub="bruto ÷ investido" accent={receita > 0 ? (roas >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
         <Card label="CAC" value={vendas > 0 ? brl(cac) : '—'} sub="custo por venda" accent="var(--o)" />
