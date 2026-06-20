@@ -183,7 +183,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   const recent = sessions.slice(0, 30)
-  const fmt = (d?: string | null) => (d ? new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—')
+  // timeZone fixo (Brasília): o dashboard renderiza no servidor (UTC na Vercel);
+  // sem isso o horário sairia 3h adiantado.
+  const fmt = (d?: string | null) => (d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—')
 
   return (
     <DashboardShell active="quiz">

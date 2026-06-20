@@ -21,7 +21,9 @@ const dec = (s: string | null): string => {
   if (!s) return ''
   try { return decodeURIComponent(s.replace(/\+/g, ' ')) } catch { return s.replace(/\+/g, ' ') }
 }
-const fmtDate = (d: string) => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+// timeZone fixo: o dashboard renderiza no servidor (UTC na Vercel); sem isso o
+// horário sairia 3h adiantado. America/Sao_Paulo = fuso de Brasília.
+const fmtDate = (d: string) => new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 
 function Card({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
