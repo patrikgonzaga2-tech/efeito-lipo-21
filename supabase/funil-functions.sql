@@ -31,7 +31,7 @@ create or replace function public.funil_resumo(p_since timestamptz, p_until time
 returns table (
   spend numeric, impressions bigint, link_clicks bigint, lp_views bigint, ic bigint,
   purchases_meta bigint, value_meta numeric,
-  vendas_real bigint, receita_real numeric,
+  vendas_real bigint, receita_real numeric, liquido_real numeric,
   reembolsos_qtd bigint, reembolsos_valor numeric,
   aguardando_qtd bigint, aguardando_valor numeric,
   abandono_qtd bigint
@@ -51,7 +51,8 @@ language sql stable as $fn$
     select transaction,
            (array_agg(event order by received_at desc))[1] as last_event,
            min(received_at)                                 as anchor,
-           max(price)                                       as price
+           max(price)                                       as price,
+           max(producer_value)                              as producer_value
     from public.vendas
     where transaction is not null
     group by transaction
@@ -60,6 +61,7 @@ language sql stable as $fn$
     select
       count(*) filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE'))                       as vendas_real,
       coalesce(sum(price) filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE')),0)         as receita_real,
+      coalesce(sum(producer_value) filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE')),0) as liquido_real,
       count(*) filter (where last_event in ('PURCHASE_REFUNDED','PURCHASE_CHARGEBACK'))                     as reembolsos_qtd,
       coalesce(sum(price) filter (where last_event in ('PURCHASE_REFUNDED','PURCHASE_CHARGEBACK')),0)       as reembolsos_valor,
       count(*) filter (where last_event in ('PURCHASE_BILLET_PRINTED','PURCHASE_DELAYED'))                  as aguardando_qtd,
@@ -78,7 +80,7 @@ language sql stable as $fn$
   )
   select m.spend, m.impressions, m.link_clicks, m.lp_views, m.ic,
          m.purchases_meta, m.value_meta,
-         v.vendas_real, v.receita_real,
+         v.vendas_real, v.receita_real, v.liquido_real,
          v.reembolsos_qtd, v.reembolsos_valor,
          v.aguardando_qtd, v.aguardando_valor, a.abandono_qtd
   from m, v, a

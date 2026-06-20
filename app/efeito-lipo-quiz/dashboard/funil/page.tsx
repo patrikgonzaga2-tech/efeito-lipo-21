@@ -10,7 +10,7 @@ export const metadata = { title: 'Funil — Efeito Lipo', robots: { index: false
 
 type Resumo = {
   spend: number; impressions: number; link_clicks: number; lp_views: number; ic: number
-  purchases_meta: number; value_meta: number; vendas_real: number; receita_real: number
+  purchases_meta: number; value_meta: number; vendas_real: number; receita_real: number; liquido_real: number
   reembolsos_qtd: number; reembolsos_valor: number
   aguardando_qtd: number; aguardando_valor: number
   abandono_qtd: number
@@ -41,18 +41,21 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
   const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until })
-  const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, receita_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
+  const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0
   const spend = n(d.spend), impr = n(d.impressions), clk = n(d.link_clicks), pv = n(d.lp_views)
   const ic = n(d.ic), comprasMeta = n(d.purchases_meta), vendas = n(d.vendas_real), receita = n(d.receita_real)
+  const liquido = n(d.liquido_real) // o que cai na conta após as taxas da Hotmart (comissão PRODUCER)
   const refQtd = n(d.reembolsos_qtd), refValor = n(d.reembolsos_valor)
   const aguQtd = n(d.aguardando_qtd), aguValor = n(d.aguardando_valor)
   const abaQtd = n(d.abandono_qtd)
   // % de reembolso = devolvidas ÷ total de compras pagas (líquidas + devolvidas).
   const refPct = pct1(refQtd, vendas + refQtd)
+  // % de taxas: quanto do bruto a Hotmart/afins comem antes de cair na conta.
+  const taxasPct = pct1(receita - liquido, receita)
 
-  const roas = div(receita, spend)
-  const lucro = receita - spend
+  const roas = div(receita, spend) // ROAS no bruto (padrão de mercado)
+  const lucro = liquido - spend    // lucro REAL: o que entrou (líquido) menos o investido
   const cac = div(spend, vendas)
   const ticket = div(receita, vendas)
 
@@ -79,14 +82,15 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
       {/* Macro */}
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))' }}>
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
-        <Card label="Faturamento" value={brl0(receita)} sub={`${vendas} vendas · ticket ${vendas ? brl(ticket) : '—'}`} accent="var(--g)" />
-        <Card label="Lucro" value={brl0(lucro)} sub="faturamento − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
-        <Card label="ROAS" value={receita > 0 ? roas.toFixed(2) + 'x' : '—'} sub="retorno por R$ investido" accent={receita > 0 ? (roas >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
+        <Card label="Faturamento" value={brl0(receita)} sub={`bruto · ${vendas} vendas · ticket ${vendas ? brl(ticket) : '—'}`} accent="var(--g)" />
+        <Card label="Líquido" value={brl0(liquido)} sub={`após taxas Hotmart${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
+        <Card label="Lucro" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
+        <Card label="ROAS" value={receita > 0 ? roas.toFixed(2) + 'x' : '—'} sub="bruto ÷ investido" accent={receita > 0 ? (roas >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
         <Card label="CAC" value={vendas > 0 ? brl(cac) : '—'} sub="custo por venda" accent="var(--o)" />
       </div>
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-        💡 <strong>Gasto e funil do Meta</strong> são completos no período. As <strong>vendas reais da Hotmart</strong> são capturadas desde <strong>19/06</strong> — então faturamento/ROAS/lucro de períodos anteriores ficam parciais. Daqui pra frente, completos.
+        💡 <strong>Faturamento</strong> é o bruto (o que o cliente pagou); <strong>Líquido</strong> é o que cai na conta após as taxas da Hotmart, e o <strong>Lucro</strong> usa o líquido. ROAS fica no bruto (padrão de mercado). <strong>Gasto e funil do Meta</strong> são completos no período; <strong>vendas da Hotmart</strong> desde <strong>19/06</strong> — antes disso, faturamento/lucro parciais.
       </div>
 
       {/* Dinheiro na mesa: reembolsos + aguardando pagamento + abandono */}
