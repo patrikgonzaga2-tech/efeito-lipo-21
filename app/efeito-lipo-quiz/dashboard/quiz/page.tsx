@@ -4,6 +4,7 @@ import { STEPS } from '../../_data'
 import type { Step } from '../../_data'
 import Login from '../_login'
 import { DashboardShell } from '../_shell'
+import { PeriodFilter, resolvePeriod, type SearchParams } from '../_period'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -68,34 +69,6 @@ function Bar({ label, value, total, color = 'var(--o)' }: { label: string; value
   )
 }
 
-function PeriodFilter({ range, from, to, periodLabel, count }: { range: string; from?: string; to?: string; periodLabel: string; count: number }) {
-  const presets: [string, string][] = [['1d', '24h'], ['3d', '3 dias'], ['7d', '7 dias'], ['30d', '30 dias'], ['all', 'Tudo']]
-  const pill = (active: boolean): React.CSSProperties => ({
-    padding: '8px 14px', borderRadius: 99, fontSize: 13.5, fontWeight: 700, textDecoration: 'none',
-    border: active ? '1px solid var(--o)' : '1px solid rgba(0,0,0,.12)',
-    background: active ? 'var(--o)' : '#fff', color: active ? '#fff' : 'var(--ink)',
-    whiteSpace: 'nowrap', display: 'inline-block',
-  })
-  const inp: React.CSSProperties = { padding: '7px 10px', borderRadius: 10, border: '1px solid rgba(0,0,0,.14)', fontSize: 13.5, background: '#fff', color: 'var(--ink)' }
-  return (
-    <div className="rounded-2xl p-4 mb-5" style={{ background: '#fff', border: '1px solid rgba(0,0,0,.07)' }}>
-      <div className="flex flex-wrap items-center gap-2">
-        {presets.map(([k, label]) => <a key={k} href={`?range=${k}`} style={pill(range === k)}>{label}</a>)}
-        <form method="get" className="flex flex-wrap items-center gap-2" style={{ marginLeft: 'auto' }}>
-          <input type="hidden" name="range" value="custom" />
-          <input type="date" name="from" defaultValue={from} aria-label="De" style={inp} />
-          <span style={{ color: 'var(--mute)', fontSize: 13 }}>até</span>
-          <input type="date" name="to" defaultValue={to} aria-label="Até" style={inp} />
-          <button type="submit" style={{ ...pill(range === 'custom'), cursor: 'pointer', border: range === 'custom' ? '1px solid var(--g)' : '1px solid rgba(0,0,0,.12)', background: range === 'custom' ? 'var(--g)' : 'var(--ink)', color: '#fff' }}>Aplicar</button>
-        </form>
-      </div>
-      <div style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 10 }}>
-        Mostrando <strong style={{ color: 'var(--ink)' }}>{periodLabel}</strong> · {count} {count === 1 ? 'sessão' : 'sessões'}
-      </div>
-    </div>
-  )
-}
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-8">
@@ -104,8 +77,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </section>
   )
 }
-
-type SearchParams = { range?: string; from?: string; to?: string }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const jar = await cookies()
@@ -118,24 +89,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   // ── Filtro de período ─────────────────────────────────────────────
-  // Presets = janelas móveis (últimas N×24h). Personalizado = datas no
-  // fuso de Brasília (-03:00) pra alinhar ao dia certo do usuário.
+  // Mesmo filtro padrão das outras abas (Hoje/7d/30d/Mês atual/Tudo + datas),
+  // via resolvePeriod. O quiz só adiciona o "Tudo" e o piso de reinício abaixo.
   const sp = await searchParams
-  const range = sp.range || 'all'
-  const DAY = 86_400_000
-  const PRESET_DAYS: Record<string, number> = { '1d': 1, '3d': 3, '7d': 7, '30d': 30 }
-  let sinceIso: string | null = null
-  let untilIso: string | null = null
-  let periodLabel = 'todo o período'
-  if (range === 'custom' && (sp.from || sp.to)) {
-    if (sp.from) sinceIso = `${sp.from}T00:00:00-03:00`
-    if (sp.to) untilIso = `${sp.to}T23:59:59-03:00`
-    periodLabel = `${sp.from || '…'} até ${sp.to || '…'}`
-  } else if (PRESET_DAYS[range]) {
-    const d = PRESET_DAYS[range]
-    sinceIso = new Date(Date.now() - d * DAY).toISOString()
-    periodLabel = d === 1 ? 'últimas 24 horas' : `últimos ${d} dias`
-  }
+  const { since, until, range, periodLabel: basePeriodLabel } = resolvePeriod({ ...sp, range: sp.range || 'all' })
+  let sinceIso = since
+  const untilIso = until
+  let periodLabel = basePeriodLabel
 
   // ── Reinício da medição ───────────────────────────────────────────
   // A contagem da 1ª tela foi corrigida (dwell alinhado ao Meta). Os dados
@@ -144,7 +104,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // contagem nova e limpa. Nada é apagado: pra rever o histórico, basta
   // recuar (ou remover) este marco. Piso aplicado a todos os períodos.
   const MEASURE_SINCE = '2026-06-12T16:00:00Z' // 12/06 13h (Brasília)
-  if (!sinceIso || new Date(sinceIso) < new Date(MEASURE_SINCE)) {
+  if (new Date(sinceIso) < new Date(MEASURE_SINCE)) {
     sinceIso = MEASURE_SINCE
     if (range === 'all') periodLabel = 'desde o reinício · 12/06 13h'
   }
@@ -227,7 +187,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <DashboardShell active="quiz">
-      <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} count={total} />
+      <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} presets={[['hoje', 'Hoje'], ['7d', '7 dias'], ['30d', '30 dias'], ['mes', 'Mês atual'], ['all', 'Tudo']]} note={` · ${total} ${total === 1 ? 'sessão' : 'sessões'}`} />
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(168px,1fr))' }}>
         <Card label="Visualizações" value={String(realPV)} sub="page views reais (Meta)" />
         <Card label="Inícios" value={String(starts)} sub={`${pct(starts, realPV)}% das visualizações`} accent="var(--gd)" />
