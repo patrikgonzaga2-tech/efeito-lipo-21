@@ -11,6 +11,9 @@ export const metadata = { title: 'Funil — Efeito Lipo', robots: { index: false
 type Resumo = {
   spend: number; impressions: number; link_clicks: number; lp_views: number; ic: number
   purchases_meta: number; value_meta: number; vendas_real: number; receita_real: number
+  reembolsos_qtd: number; reembolsos_valor: number
+  aguardando_qtd: number; aguardando_valor: number
+  abandono_qtd: number
 }
 
 const brl = (n: number) => 'R$ ' + (Math.round(n * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })
@@ -38,10 +41,15 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
   const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until })
-  const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, receita_real: 0 }
+  const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, receita_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0
   const spend = n(d.spend), impr = n(d.impressions), clk = n(d.link_clicks), pv = n(d.lp_views)
   const ic = n(d.ic), comprasMeta = n(d.purchases_meta), vendas = n(d.vendas_real), receita = n(d.receita_real)
+  const refQtd = n(d.reembolsos_qtd), refValor = n(d.reembolsos_valor)
+  const aguQtd = n(d.aguardando_qtd), aguValor = n(d.aguardando_valor)
+  const abaQtd = n(d.abandono_qtd)
+  // % de reembolso = devolvidas ÷ total de compras pagas (líquidas + devolvidas).
+  const refPct = pct1(refQtd, vendas + refQtd)
 
   const roas = div(receita, spend)
   const lucro = receita - spend
@@ -55,7 +63,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
     { nome: 'Page views', valor: int(pv), taxa: pct1(pv, clk), custo: brl(div(spend, pv)) },
     { nome: 'Initiate checkout', valor: int(ic), taxa: pct1(ic, pv), custo: brl(div(spend, ic)) },
     { nome: 'Compras (pixel Meta)', valor: int(comprasMeta), taxa: pct1(comprasMeta, ic), custo: 'CPA ' + brl(div(spend, comprasMeta)) },
-    { nome: 'Vendas reais (Hotmart)', valor: int(vendas), taxa: comprasMeta > 0 ? pct1(vendas, comprasMeta) + ' do pixel' : '—', custo: 'CAC ' + brl(cac) },
+    { nome: 'Vendas líquidas (Hotmart)', valor: int(vendas), taxa: comprasMeta > 0 ? pct1(vendas, comprasMeta) + ' do pixel' : '—', custo: 'CAC ' + brl(cac) },
   ]
 
   const td: React.CSSProperties = { padding: '12px 14px', fontSize: 14, color: 'var(--ink)' }
@@ -80,6 +88,20 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
         💡 <strong>Gasto e funil do Meta</strong> são completos no período. As <strong>vendas reais da Hotmart</strong> são capturadas desde <strong>19/06</strong> — então faturamento/ROAS/lucro de períodos anteriores ficam parciais. Daqui pra frente, completos.
       </div>
+
+      {/* Dinheiro na mesa: reembolsos + aguardando pagamento + abandono */}
+      <section className="mt-7">
+        <h2 className="font-display" style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>Dinheiro na mesa</h2>
+        <p style={{ fontSize: 12.5, color: 'var(--sub)', marginBottom: 14 }}>O que saiu das vendas (reembolso) e o que ainda pode virar venda (pagamento pendente e carrinho abandonado).</p>
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
+          <Card label="Reembolsos" value={int(refQtd)} sub={`${refValor > 0 ? brl0(refValor) + ' devolvidos · ' : ''}${refPct} das vendas`} accent="#c0392b" />
+          <Card label="Aguardando pagamento" value={int(aguQtd)} sub={`${brl0(aguValor)} a receber · boleto/Pix gerado`} accent="var(--o)" />
+          <Card label="Abandono de carrinho" value={int(abaQtd)} sub="carrinhos abandonados no checkout" accent="var(--o)" />
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>
+          As <strong>vendas líquidas já descontam os reembolsos</strong> — o número reflete a realidade atual de cada compra. Reembolso = compra paga e devolvida. Aguardando = boleto/Pix gerado e ainda não pago. Abandono não traz valor pela Hotmart, por isso mostramos só a quantidade.
+        </p>
+      </section>
 
       {/* Funil com taxas */}
       <section className="mt-7">
