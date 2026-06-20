@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Produtos — Efeito Lipo', robots: { index: false, follow: false } }
 
-type Prod = { product_name: string; vendas: number; receita: number; reembolsos: number; reembolsos_valor: number }
+type Prod = { product_name: string; vendas: number; receita: number; liquido: number; reembolsos: number; reembolsos_valor: number }
 type Cat = 'main' | 'cinturinha' | 'livro' | 'vitalicio' | 'outro'
 
 const N = (v: unknown) => Number(v) || 0
@@ -44,15 +44,16 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Pro
   const { since, until, range, periodLabel } = resolvePeriod(sp)
   const produtos = await sbRpc<Prod>('vendas_por_produto', { p_since: since, p_until: until })
 
-  const totals: Record<Cat, { vendas: number; receita: number; reemb: number }> = {
-    main: { vendas: 0, receita: 0, reemb: 0 }, cinturinha: { vendas: 0, receita: 0, reemb: 0 }, livro: { vendas: 0, receita: 0, reemb: 0 }, vitalicio: { vendas: 0, receita: 0, reemb: 0 }, outro: { vendas: 0, receita: 0, reemb: 0 },
+  const totals: Record<Cat, { vendas: number; receita: number; liquido: number; reemb: number }> = {
+    main: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, cinturinha: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, livro: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, vitalicio: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, outro: { vendas: 0, receita: 0, liquido: 0, reemb: 0 },
   }
   for (const p of produtos) {
     const c = categorize(p.product_name)
-    totals[c].vendas += N(p.vendas); totals[c].receita += N(p.receita); totals[c].reemb += N(p.reembolsos)
+    totals[c].vendas += N(p.vendas); totals[c].receita += N(p.receita); totals[c].liquido += N(p.liquido); totals[c].reemb += N(p.reembolsos)
   }
   const totalVendas = produtos.reduce((a, p) => a + N(p.vendas), 0)
   const totalReceita = produtos.reduce((a, p) => a + N(p.receita), 0)
+  const totalLiquido = produtos.reduce((a, p) => a + N(p.liquido), 0)
   const totalReemb = produtos.reduce((a, p) => a + N(p.reembolsos), 0)
   const main = totals.main.vendas
   // % de reembolso = devolvidas ÷ total de compras pagas (líquidas + devolvidas).
@@ -77,9 +78,9 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Pro
       <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} />
 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-        <Card label="Total de vendas" value={String(totalVendas)} sub={`${brl0(totalReceita)} no período · líquido de reembolsos`} />
-        <Card label="Efeito Lipo" value={String(main)} sub={`produto principal · ${refRate(main, totals.main.reemb)} de reembolso`} accent="var(--o)" />
-        <Card label="Order bumps" value={String(bumpVendas)} sub={`${brl0(bumpReceita)} · ${pct1(bumpVendas, main)} do Efeito Lipo`} accent="var(--g)" />
+        <Card label="Total de vendas" value={String(totalVendas)} sub={`${brl0(totalReceita)} bruto · ${brl0(totalLiquido)} líquido`} />
+        <Card label="Efeito Lipo" value={String(main)} sub={`principal · ${brl0(totals.main.liquido)} líquido · ${refRate(main, totals.main.reemb)} reemb.`} accent="var(--o)" />
+        <Card label="Order bumps" value={String(bumpVendas)} sub={`${brl0(bumpReceita)} bruto · ${pct1(bumpVendas, main)} do Efeito Lipo`} accent="var(--g)" />
         <Card label="Reembolsos" value={String(totalReemb)} sub={`${refRate(totalVendas, totalReemb)} das vendas · todos os produtos`} accent="#c0392b" />
       </div>
 
@@ -91,7 +92,8 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Pro
             <thead><tr style={{ borderBottom: '1px solid rgba(0,0,0,.08)' }}>
               <th style={{ ...thR, textAlign: 'left' }}>Produto</th>
               <th style={thR}>Vendas</th>
-              <th style={thR}>Receita</th>
+              <th style={thR}>Receita (bruto)</th>
+              <th style={thR}>Líquido</th>
               <th style={thR}>Reembolso</th>
               <th style={thR}>Taxa vs Efeito Lipo</th>
             </tr></thead>
@@ -101,6 +103,7 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Pro
                   <td style={{ ...td, fontWeight: 600 }}>{b.nome}</td>
                   <td style={tdR}>{totals[b.cat].vendas}</td>
                   <td style={tdR}>{brl0(totals[b.cat].receita)}</td>
+                  <td style={{ ...tdR, fontWeight: 700, color: 'var(--g)' }}>{brl0(totals[b.cat].liquido)}</td>
                   <td style={{ ...tdR, color: totals[b.cat].reemb > 0 ? '#c0392b' : 'var(--mute)' }}>{totals[b.cat].reemb > 0 ? `${totals[b.cat].reemb} · ${refRate(totals[b.cat].vendas, totals[b.cat].reemb)}` : '—'}</td>
                   <td style={{ ...tdR, fontWeight: 700, color: 'var(--g)' }}>{pct1(totals[b.cat].vendas, main)}</td>
                 </tr>
@@ -109,6 +112,7 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Pro
                 <td style={{ ...td, fontWeight: 800 }}>Total order bumps</td>
                 <td style={{ ...tdR, fontWeight: 800 }}>{bumpVendas}</td>
                 <td style={{ ...tdR, fontWeight: 800 }}>{brl0(bumpReceita)}</td>
+                <td style={{ ...tdR, fontWeight: 800, color: 'var(--g)' }}>{brl0(bumps.reduce((a, b) => a + totals[b.cat].liquido, 0))}</td>
                 <td style={{ ...tdR, fontWeight: 800, color: '#c0392b' }}>{bumps.reduce((a, b) => a + totals[b.cat].reemb, 0) || '—'}</td>
                 <td style={{ ...tdR, fontWeight: 800, color: 'var(--g)' }}>{pct1(bumpVendas, main)}</td>
               </tr>
