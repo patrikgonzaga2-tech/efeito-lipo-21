@@ -63,7 +63,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
     { nome: 'Page views', valor: int(pv), taxa: pct1(pv, clk), custo: brl(div(spend, pv)) },
     { nome: 'Initiate checkout', valor: int(ic), taxa: pct1(ic, pv), custo: brl(div(spend, ic)) },
     { nome: 'Compras (pixel Meta)', valor: int(comprasMeta), taxa: pct1(comprasMeta, ic), custo: 'CPA ' + brl(div(spend, comprasMeta)) },
-    { nome: 'Vendas de anúncio (Hotmart)', valor: int(vendas), taxa: comprasMeta > 0 ? pct1(vendas, comprasMeta) + ' do pixel' : '—', custo: 'CAC ' + brl(cac) },
+    { nome: 'Pedidos de anúncio (Hotmart)', valor: int(vendas), taxa: comprasMeta > 0 ? pct1(vendas, comprasMeta) + ' do pixel' : '—', custo: 'CAC ' + brl(cac) },
   ]
 
   const td: React.CSSProperties = { padding: '12px 14px', fontSize: 14, color: 'var(--ink)' }
@@ -79,16 +79,16 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
       {/* Macro do funil */}
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))' }}>
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
-        <Card label="Faturamento do funil" value={brl0(receita)} sub={`bruto · ${vendas} vendas · ticket ${vendas ? brl(ticket) : '—'}`} accent="var(--g)" />
+        <Card label="Faturamento do funil" value={brl0(receita)} sub={`bruto (com bumps) · ${vendas} pedidos · ticket ${vendas ? brl(ticket) : '—'}`} accent="var(--g)" />
         <Card label="Líquido do funil" value={brl0(liquido)} sub={`após taxas Hotmart${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
         <Card label="Margem" value={receita > 0 ? pct1(liquido, receita) : '—'} sub="líquido ÷ bruto" accent={receita > 0 ? (margem >= 0.8 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
         <Card label="Lucro do funil" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
         <Card label="ROAS do funil" value={receita > 0 ? roas.toFixed(2) + 'x' : '—'} sub="faturamento do funil ÷ investido" accent={receita > 0 ? (roas >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
-        <Card label="CAC" value={vendas > 0 ? brl(cac) : '—'} sub="custo por venda do funil" accent="var(--o)" />
+        <Card label="CAC" value={vendas > 0 ? brl(cac) : '—'} sub="custo por pedido do funil" accent="var(--o)" />
       </div>
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-        💡 Estes números contam <strong>só as vendas que vieram de anúncio</strong> (com id do anúncio rastreado). Vendas orgânicas, de WhatsApp ou sem rastreio <strong>não entram aqui</strong> — aparecem na aba <strong>Geral</strong>. Por isso o ROAS aqui costuma ser menor que o geral (blended). <strong>Atenção:</strong> parte das vendas de anúncio antes de 20/06 perdeu o id no checkout (bug já corrigido) — então este número subconta o passado e fica mais fiel daqui pra frente.
+        💡 Estes números contam <strong>só as vendas que vieram de anúncio</strong> (com id do anúncio rastreado). Vendas orgânicas, de WhatsApp ou sem rastreio <strong>não entram aqui</strong> — aparecem na aba <strong>Geral</strong>. Por isso o ROAS aqui costuma ser menor que o geral (blended). <strong>Pedidos × faturamento:</strong> "pedidos" conta cada cliente uma vez; o faturamento soma todos os itens, <strong>inclusive os order bumps</strong> (que, mesmo perdendo o id no checkout, são recuperados pelo comprador na mesma janela de compra). <strong>Atenção:</strong> parte das vendas de anúncio antes de 20/06 perdeu o id no checkout (bug já corrigido) — então este número subconta o passado e fica mais fiel daqui pra frente.
       </div>
 
       {/* Funil com taxas */}
@@ -116,7 +116,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
             </tbody>
           </table>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>Conversão = % que passou da etapa anterior. Custo = investimento ÷ eventos da etapa. A última linha conta só vendas de anúncio (com id rastreado).</p>
+        <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>Conversão = % que passou da etapa anterior. Custo = investimento ÷ eventos da etapa. A última linha conta <strong>pedidos únicos</strong> de anúncio (order bumps do mesmo checkout não recontam; o faturamento, esse sim, soma os bumps).</p>
       </section>
     </DashboardShell>
   )

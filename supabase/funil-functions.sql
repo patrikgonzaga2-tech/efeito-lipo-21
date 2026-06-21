@@ -31,6 +31,17 @@ alter table public.meta_insights
 -- (têm tracking_src = id do anúncio). É o que separa a aba "Funil" (só ad-driven;
 -- exclui orgânico/sem-rastreio/WhatsApp) da aba "Geral" (todas as origens). O
 -- gasto/funil do Meta não muda — é sempre o investimento que alimenta o funil.
+--
+-- ORDER BUMPS — duas regras importantes (iguais à lógica da aba UTM):
+--  1) HERANÇA DE SRC: o bump (Cinturinha, Livro, Vitalício) vira transação
+--     separada que NÃO carrega o src do produto principal. Sem isso, o bump
+--     sumiria do Funil (que filtra por src). Então, quando uma transação não
+--     tem src, ela herda o src de OUTRA compra do MESMO comprador na janela de
+--     ±30 min que tenha src — é o mesmo clique de compra, não inventa origem.
+--  2) VENDAS = PEDIDOS ÚNICOS: faturamento/líquido somam TODOS os itens (inclui
+--     bumps), mas a CONTAGEM de "vendas" é por pedido único (comprador + dia),
+--     pra não contar o mesmo cliente várias vezes só porque pegou bumps. Assim
+--     ticket médio e CAC ficam por cliente, não por item.
 drop function if exists public.funil_resumo(timestamptz, timestamptz);
 drop function if exists public.funil_resumo(timestamptz, timestamptz, text);
 drop function if exists public.funil_resumo(timestamptz, timestamptz, boolean);
@@ -53,29 +64,56 @@ language sql stable as $fn$
     where date >= (p_since at time zone 'America/Sao_Paulo')::date
       and date <= (p_until at time zone 'America/Sao_Paulo')::date
   ),
-  -- Uma linha por compra, com o estado atual, a âncora de período e o valor.
-  tx as (
+  -- Uma linha por compra (transação), com o estado atual, a âncora de período,
+  -- o valor, o comprador e o src próprio (não-vazio) da transação.
+  tx0 as (
     select transaction,
            (array_agg(event order by received_at desc))[1] as last_event,
            min(received_at)                                 as anchor,
            max(price)                                       as price,
-           max(producer_value)                              as producer_value
+           max(producer_value)                              as producer_value,
+           max(buyer_email)                                 as buyer_email,
+           max(tracking_src) filter (where tracking_src is not null and tracking_src <> '') as src
     from public.vendas
     where transaction is not null
-      and (not p_only_ads or (tracking_src is not null and tracking_src <> ''))
     group by transaction
+  ),
+  -- Herança de src: se a transação não tem src próprio, herda o src da compra do
+  -- mesmo comprador mais próxima no tempo (±30 min) que tenha src — é o bump.
+  tx as (
+    select t.*,
+           coalesce(t.src, (
+             select t2.src from tx0 t2
+             where t2.buyer_email is not null
+               and t2.buyer_email = t.buyer_email
+               and t2.src is not null
+               and abs(extract(epoch from (t2.anchor - t.anchor))) <= 1800
+             order by abs(extract(epoch from (t2.anchor - t.anchor))) asc
+             limit 1
+           )) as eff_src
+    from tx0 t
+  ),
+  -- Aplica o período e (opcional) o filtro só-anúncio sobre o src EFETIVO (já
+  -- com herança), pra não perder os bumps.
+  txf as (
+    select * from tx
+    where anchor >= p_since and anchor <= p_until
+      and (not p_only_ads or (eff_src is not null and eff_src <> ''))
   ),
   v as (
     select
-      count(*) filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE'))                       as vendas_real,
+      -- VENDAS = pedidos únicos: comprador + dia (bumps do mesmo checkout não
+      -- recontam). Sem comprador, cai no código da transação (sempre único).
+      count(distinct (coalesce(buyer_email, transaction), anchor::date))
+        filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE'))                             as vendas_real,
+      -- Faturamento/líquido somam TODOS os itens aprovados (inclui bumps).
       coalesce(sum(price) filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE')),0)         as receita_real,
       coalesce(sum(producer_value) filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE')),0) as liquido_real,
       count(*) filter (where last_event in ('PURCHASE_REFUNDED','PURCHASE_CHARGEBACK'))                     as reembolsos_qtd,
       coalesce(sum(price) filter (where last_event in ('PURCHASE_REFUNDED','PURCHASE_CHARGEBACK')),0)       as reembolsos_valor,
       count(*) filter (where last_event in ('PURCHASE_BILLET_PRINTED','PURCHASE_DELAYED'))                  as aguardando_qtd,
       coalesce(sum(price) filter (where last_event in ('PURCHASE_BILLET_PRINTED','PURCHASE_DELAYED')),0)    as aguardando_valor
-    from tx
-    where anchor >= p_since and anchor <= p_until
+    from txf
   ),
   -- Abandono de carrinho NÃO tem código de transação (a Hotmart manda só
   -- comprador + produto, sem valor). Por isso conta-se à parte, por comprador
