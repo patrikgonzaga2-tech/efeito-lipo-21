@@ -27,13 +27,14 @@ alter table public.meta_insights
 --                   a Hotmart não manda valor nesse evento.
 -- Período: cada transação é ancorada em quando ENTROU (1º aviso recebido).
 --
--- p_sck (opcional): quando informado, conta SÓ as vendas daquele funil (campo
--- tracking_sck). É o que separa a aba "Funil" (p_sck='efeito-lipo-quiz', só o
--- que converteu pelo quiz) da aba "Geral" (p_sck null, todas as origens). O
--- gasto/funil do Meta não muda — é sempre o investimento que alimenta o quiz.
+-- p_only_ads (opcional): quando true, conta SÓ as vendas que vieram de anúncio
+-- (têm tracking_src = id do anúncio). É o que separa a aba "Funil" (só ad-driven;
+-- exclui orgânico/sem-rastreio/WhatsApp) da aba "Geral" (todas as origens). O
+-- gasto/funil do Meta não muda — é sempre o investimento que alimenta o funil.
 drop function if exists public.funil_resumo(timestamptz, timestamptz);
 drop function if exists public.funil_resumo(timestamptz, timestamptz, text);
-create or replace function public.funil_resumo(p_since timestamptz, p_until timestamptz, p_sck text default null)
+drop function if exists public.funil_resumo(timestamptz, timestamptz, boolean);
+create or replace function public.funil_resumo(p_since timestamptz, p_until timestamptz, p_only_ads boolean default false)
 returns table (
   spend numeric, impressions bigint, link_clicks bigint, lp_views bigint, ic bigint,
   purchases_meta bigint, value_meta numeric,
@@ -61,7 +62,7 @@ language sql stable as $fn$
            max(producer_value)                              as producer_value
     from public.vendas
     where transaction is not null
-      and (p_sck is null or tracking_sck = p_sck)
+      and (not p_only_ads or (tracking_src is not null and tracking_src <> ''))
     group by transaction
   ),
   v as (

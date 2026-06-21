@@ -8,9 +8,6 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Funil — Efeito Lipo', robots: { index: false, follow: false } }
 
-// Funil do quiz: só as vendas que passaram por este funil (sck).
-const FUNIL_SCK = 'efeito-lipo-quiz'
-
 type Resumo = {
   spend: number; impressions: number; link_clicks: number; lp_views: number; ic: number
   purchases_meta: number; value_meta: number; vendas_real: number; receita_real: number; liquido_real: number
@@ -43,9 +40,9 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
 
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
-  // Funil = só vendas com sck do funil do quiz (p_sck). O gasto/funil do Meta
-  // continua completo — é o investimento que alimenta o quiz.
-  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_sck: FUNIL_SCK })
+  // Funil = só vendas que vieram de anúncio (têm src = id do anúncio). Exclui
+  // orgânico/sem-rastreio/WhatsApp. O gasto/funil do Meta continua completo.
+  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_only_ads: true })
   const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0
   const spend = n(d.spend), impr = n(d.impressions), clk = n(d.link_clicks), pv = n(d.lp_views)
@@ -66,7 +63,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
     { nome: 'Page views', valor: int(pv), taxa: pct1(pv, clk), custo: brl(div(spend, pv)) },
     { nome: 'Initiate checkout', valor: int(ic), taxa: pct1(ic, pv), custo: brl(div(spend, ic)) },
     { nome: 'Compras (pixel Meta)', valor: int(comprasMeta), taxa: pct1(comprasMeta, ic), custo: 'CPA ' + brl(div(spend, comprasMeta)) },
-    { nome: 'Vendas do funil (Hotmart)', valor: int(vendas), taxa: comprasMeta > 0 ? pct1(vendas, comprasMeta) + ' do pixel' : '—', custo: 'CAC ' + brl(cac) },
+    { nome: 'Vendas de anúncio (Hotmart)', valor: int(vendas), taxa: comprasMeta > 0 ? pct1(vendas, comprasMeta) + ' do pixel' : '—', custo: 'CAC ' + brl(cac) },
   ]
 
   const td: React.CSSProperties = { padding: '12px 14px', fontSize: 14, color: 'var(--ink)' }
@@ -75,7 +72,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   return (
     <DashboardShell active="funil">
       <h1 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>Funil</h1>
-      <p style={{ fontSize: 13.5, color: 'var(--sub)', marginBottom: 18 }}>Apenas o que <strong>converteu pelo funil do quiz</strong> (vendas com sck <code>{FUNIL_SCK}</code>), do clique à compra — pra medir a eficiência do funil contra o investimento. Visão completa (todas as origens) fica na aba <strong>Geral</strong>.</p>
+      <p style={{ fontSize: 13.5, color: 'var(--sub)', marginBottom: 18 }}>Apenas vendas que <strong>vieram de anúncio</strong> (com id de anúncio rastreado), do clique à compra — pra medir a eficiência do tráfego pago contra o investimento. Orgânico, sem rastreio e WhatsApp ficam só na aba <strong>Geral</strong>.</p>
 
       <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} />
 
@@ -91,7 +88,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-        💡 Estes números contam <strong>só as vendas que passaram pelo funil do quiz</strong> (sck <code>{FUNIL_SCK}</code>). Vendas orgânicas, de WhatsApp ou de outras páginas <strong>não entram aqui</strong> — elas aparecem na aba <strong>Geral</strong>. Por isso o ROAS do funil costuma ser menor que o ROAS geral (blended).
+        💡 Estes números contam <strong>só as vendas que vieram de anúncio</strong> (com id do anúncio rastreado). Vendas orgânicas, de WhatsApp ou sem rastreio <strong>não entram aqui</strong> — aparecem na aba <strong>Geral</strong>. Por isso o ROAS aqui costuma ser menor que o geral (blended). <strong>Atenção:</strong> parte das vendas de anúncio antes de 20/06 perdeu o id no checkout (bug já corrigido) — então este número subconta o passado e fica mais fiel daqui pra frente.
       </div>
 
       {/* Funil com taxas */}
@@ -119,7 +116,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
             </tbody>
           </table>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>Conversão = % que passou da etapa anterior. Custo = investimento ÷ eventos da etapa. A última linha conta só vendas do funil (sck <code>{FUNIL_SCK}</code>).</p>
+        <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>Conversão = % que passou da etapa anterior. Custo = investimento ÷ eventos da etapa. A última linha conta só vendas de anúncio (com id rastreado).</p>
       </section>
     </DashboardShell>
   )
