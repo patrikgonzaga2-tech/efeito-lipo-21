@@ -57,7 +57,7 @@ create or replace function public.funil_resumo(p_since timestamptz, p_until time
 returns table (
   spend numeric, impressions bigint, link_clicks bigint, lp_views bigint, ic bigint,
   purchases_meta bigint, value_meta numeric,
-  vendas_real bigint, receita_real numeric, liquido_real numeric,
+  vendas_real bigint, itens_vendidos bigint, receita_real numeric, liquido_real numeric,
   reembolsos_qtd bigint, reembolsos_valor numeric,
   aguardando_qtd bigint, aguardando_valor numeric,
   abandono_qtd bigint
@@ -114,6 +114,8 @@ language sql stable as $fn$
       -- que foram APROVADAS dentro do período (exclui os fantasmas COMPLETE-only).
       count(distinct (coalesce(buyer_email, transaction), approved_at::date))
         filter (where approved_at is not null and approved_at >= p_since and approved_at <= p_until)         as vendas_real,
+      -- ITENS VENDIDOS = nº de produtos (transações aprovadas, conta cada bump).
+      count(*) filter (where approved_at is not null and approved_at >= p_since and approved_at <= p_until)   as itens_vendidos,
       -- Faturamento/líquido somam TODOS os itens aprovados no período (inclui bumps).
       coalesce(sum(price) filter (where approved_at is not null and approved_at >= p_since and approved_at <= p_until),0)          as receita_real,
       coalesce(sum(producer_value) filter (where approved_at is not null and approved_at >= p_since and approved_at <= p_until),0) as liquido_real,
@@ -135,7 +137,7 @@ language sql stable as $fn$
   )
   select m.spend, m.impressions, m.link_clicks, m.lp_views, m.ic,
          m.purchases_meta, m.value_meta,
-         v.vendas_real, v.receita_real, v.liquido_real,
+         v.vendas_real, v.itens_vendidos, v.receita_real, v.liquido_real,
          v.reembolsos_qtd, v.reembolsos_valor,
          v.aguardando_qtd, v.aguardando_valor, a.abandono_qtd
   from m, v, a

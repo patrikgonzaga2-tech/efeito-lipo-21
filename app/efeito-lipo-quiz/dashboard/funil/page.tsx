@@ -10,7 +10,7 @@ export const metadata = { title: 'Funil — Efeito Lipo', robots: { index: false
 
 type Resumo = {
   spend: number; impressions: number; link_clicks: number; lp_views: number; ic: number
-  purchases_meta: number; value_meta: number; vendas_real: number; receita_real: number; liquido_real: number
+  purchases_meta: number; value_meta: number; vendas_real: number; itens_vendidos: number; receita_real: number; liquido_real: number
   reembolsos_qtd: number; reembolsos_valor: number
   aguardando_qtd: number; aguardando_valor: number
   abandono_qtd: number
@@ -43,10 +43,10 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   // Funil = só vendas que vieram de anúncio (têm src = id do anúncio). Exclui
   // orgânico/sem-rastreio/WhatsApp. O gasto/funil do Meta continua completo.
   const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_only_ads: true })
-  const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
+  const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, itens_vendidos: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0
   const spend = n(d.spend), impr = n(d.impressions), clk = n(d.link_clicks), pv = n(d.lp_views)
-  const ic = n(d.ic), comprasMeta = n(d.purchases_meta), vendas = n(d.vendas_real), receita = n(d.receita_real)
+  const ic = n(d.ic), comprasMeta = n(d.purchases_meta), vendas = n(d.vendas_real), itens = n(d.itens_vendidos), receita = n(d.receita_real)
   const liquido = n(d.liquido_real)
 
   const roas = div(receita, spend) // ROAS do funil: faturamento do funil ÷ investido
@@ -79,7 +79,8 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
       {/* Macro do funil */}
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))' }}>
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
-        <Card label="Faturamento do funil" value={brl0(receita)} sub={`bruto (com bumps) · ${vendas} pedidos · ticket ${vendas ? brl(ticket) : '—'}`} accent="var(--g)" />
+        <Card label="Vendas do funil" value={int(vendas)} sub={`${int(itens)} produtos vendidos${itens > vendas ? ` · +${int(itens - vendas)} em order bumps` : ''}`} accent="var(--g)" />
+        <Card label="Faturamento do funil" value={brl0(receita)} sub={`bruto (com bumps) · ticket ${vendas ? brl(ticket) : '—'} / pedido`} accent="var(--g)" />
         <Card label="Líquido do funil" value={brl0(liquido)} sub={`após taxas Hotmart${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
         <Card label="Margem" value={receita > 0 ? pct1(liquido, receita) : '—'} sub="líquido ÷ bruto" accent={receita > 0 ? (margem >= 0.8 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
         <Card label="Lucro do funil" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
