@@ -26,8 +26,14 @@ alter table public.meta_insights
 --   • abandono    = carrinho abandonado (OUT_OF_SHOPPING_CART) — só quantidade,
 --                   a Hotmart não manda valor nesse evento.
 -- Período: cada transação é ancorada em quando ENTROU (1º aviso recebido).
+--
+-- p_sck (opcional): quando informado, conta SÓ as vendas daquele funil (campo
+-- tracking_sck). É o que separa a aba "Funil" (p_sck='efeito-lipo-quiz', só o
+-- que converteu pelo quiz) da aba "Geral" (p_sck null, todas as origens). O
+-- gasto/funil do Meta não muda — é sempre o investimento que alimenta o quiz.
 drop function if exists public.funil_resumo(timestamptz, timestamptz);
-create or replace function public.funil_resumo(p_since timestamptz, p_until timestamptz)
+drop function if exists public.funil_resumo(timestamptz, timestamptz, text);
+create or replace function public.funil_resumo(p_since timestamptz, p_until timestamptz, p_sck text default null)
 returns table (
   spend numeric, impressions bigint, link_clicks bigint, lp_views bigint, ic bigint,
   purchases_meta bigint, value_meta numeric,
@@ -55,6 +61,7 @@ language sql stable as $fn$
            max(producer_value)                              as producer_value
     from public.vendas
     where transaction is not null
+      and (p_sck is null or tracking_sck = p_sck)
     group by transaction
   ),
   v as (

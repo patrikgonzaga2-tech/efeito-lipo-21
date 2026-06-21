@@ -9,6 +9,7 @@ const GROUPS: { label: string; tabs: { key: string; label: string; href: string 
   {
     label: 'Quiz',
     tabs: [
+      { key: 'geral', label: 'Geral', href: `${BASE}/geral` },
       { key: 'funil', label: 'Funil', href: `${BASE}/funil` },
       { key: 'quiz', label: 'Quiz', href: `${BASE}/quiz` },
       { key: 'anuncios', label: 'Anúncios', href: `${BASE}/anuncios` },
