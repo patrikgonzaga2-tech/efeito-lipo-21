@@ -30,16 +30,19 @@ language sql stable as $fn$
     group by utm_term
   ),
   v as (
-    -- receita por conjunto: deduplica eventos pela transação (1 venda = 1 linha)
+    -- receita por conjunto: 1 venda = 1 transação, contada pela APROVAÇÃO e
+    -- ancorada na data dela (exclui fantasmas COMPLETE-only e evita ancorar a
+    -- venda na data do fim de garantia).
     select adset_id, count(*) vendas, sum(price) receita
     from (
-      select distinct on (transaction) tracking_src adset_id, price
+      select transaction, tracking_src adset_id, price,
+             row_number() over (partition by transaction order by received_at asc) rn
       from public.vendas
-      where event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE')
+      where event = 'PURCHASE_APPROVED'
         and received_at >= p_since and received_at <= p_until
         and tracking_src ~ '^[0-9]{6,}$'
-      order by transaction, received_at desc
     ) d
+    where rn = 1
     group by adset_id
   )
   select sp.adset_id, sp.adset_name, sp.campaign_id, sp.campaign_name,

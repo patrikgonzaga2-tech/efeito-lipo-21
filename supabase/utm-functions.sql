@@ -8,6 +8,16 @@
 -- Então, quando uma venda vem sem src, herdamos o src de OUTRA compra do MESMO
 -- comprador na MESMA janela de checkout (±30 min) que tenha src. Isso recupera
 -- a origem dos bumps sem inventar nada (é o mesmo clique de compra).
+--
+-- VENDA = APROVAÇÃO (não "complete"): contamos a transação pelo evento
+-- PURCHASE_APPROVED, ancorada na DATA DA APROVAÇÃO — é o que a Hotmart chama de
+-- "compra aprovada". Antes filtrávamos por APPROVED *ou* COMPLETE e ancorávamos
+-- no evento mais recente; mas o PURCHASE_COMPLETE é o aviso de FIM DE GARANTIA,
+-- que chega semanas depois. Como muitas compras antigas (anteriores ao rastreio)
+-- só mandam o COMPLETE, elas viravam "venda nova" na data errada e SEM src —
+-- inflando o balde "sem rastreio". Contando pela aprovação, isso some e o número
+-- bate com o painel da Hotmart. (Vendas futuras sempre têm APPROVED, então nada
+-- real se perde; só somem os fantasmas pré-rastreio, que nunca tiveram origem.)
 -- ════════════════════════════════════════════════════════════════════
 
 create or replace function public.vendas_utm(p_since timestamptz, p_until timestamptz)
@@ -16,14 +26,20 @@ returns table (
   utm_source text, utm_campaign text, utm_medium text, utm_content text
 )
 language sql stable as $fn$
-  with v as (
-    -- 1 venda por transação (deduplica eventos)
-    select distinct on (transaction) transaction, received_at, product_name, price,
-           tracking_sck sck, tracking_src src, buyer_email
+  appr as (
+    -- todas as aprovações no período, numeradas por transação (1 = a 1ª aprovação)
+    select transaction, received_at, product_name, price,
+           tracking_sck as sck, tracking_src as src, buyer_email,
+           row_number() over (partition by transaction order by received_at asc) as rn
     from public.vendas
-    where event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE')
+    where event = 'PURCHASE_APPROVED'
       and received_at >= p_since and received_at <= p_until
-    order by transaction, received_at desc
+  ),
+  v as (
+    -- 1 venda por transação, definida pela APROVAÇÃO e ancorada na data dela.
+    select transaction, received_at, product_name, price, sck, src, buyer_email
+    from appr
+    where rn = 1
   ),
   -- Se a venda não tem src, herda o src da compra do mesmo comprador mais
   -- próxima no tempo (até 30 min) que tenha src — é o mesmo checkout (bump).

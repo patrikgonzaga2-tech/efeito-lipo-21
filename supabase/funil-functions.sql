@@ -20,12 +20,20 @@ alter table public.meta_insights
 -- (o evento mais recente) e só contamos como venda quem está APPROVED/COMPLETE
 -- AGORA. Quem foi reembolsada/cancelada/chargeback sai do número sozinha.
 --
+-- VENDA = APROVAÇÃO (ancorada na data em que foi APROVADA): a venda só conta se a
+-- transação teve um evento PURCHASE_APPROVED, e ela é ancorada nessa data — é o
+-- que a Hotmart chama de "compra aprovada". Isso exclui os FANTASMAS: compras
+-- antigas (anteriores ao rastreio) que só mandam o PURCHASE_COMPLETE (fim da
+-- garantia, semanas depois) — antes elas entravam como "venda nova" na data
+-- errada e sem origem, inflando a aba Geral. Sem APPROVED, não é venda do período.
+--
 -- Também devolvemos os "baldes de dinheiro na mesa":
 --   • reembolsos  = compras pagas e devolvidas (REFUNDED/CHARGEBACK)
 --   • aguardando  = boleto/Pix gerado e ainda não pago (BILLET_PRINTED/DELAYED)
 --   • abandono    = carrinho abandonado (OUT_OF_SHOPPING_CART) — só quantidade,
 --                   a Hotmart não manda valor nesse evento.
--- Período: cada transação é ancorada em quando ENTROU (1º aviso recebido).
+-- Período: a VENDA é ancorada na data da aprovação; os outros baldes (reembolso/
+-- aguardando) são ancorados em quando a transação ENTROU (1º aviso recebido).
 --
 -- p_only_ads (opcional): quando true, conta SÓ as vendas que vieram de anúncio
 -- (têm tracking_src = id do anúncio). É o que separa a aba "Funil" (só ad-driven;
@@ -64,15 +72,16 @@ language sql stable as $fn$
     where date >= (p_since at time zone 'America/Sao_Paulo')::date
       and date <= (p_until at time zone 'America/Sao_Paulo')::date
   ),
-  -- Uma linha por compra (transação), com o estado atual, a âncora de período,
-  -- o valor, o comprador e o src próprio (não-vazio) da transação.
+  -- Uma linha por compra (transação): estado atual, quando ENTROU, quando foi
+  -- APROVADA (null se nunca teve APPROVED = fantasma), valor, comprador e src.
   tx0 as (
     select transaction,
-           (array_agg(event order by received_at desc))[1] as last_event,
-           min(received_at)                                 as anchor,
-           max(price)                                       as price,
-           max(producer_value)                              as producer_value,
-           max(buyer_email)                                 as buyer_email,
+           (array_agg(event order by received_at desc))[1]              as last_event,
+           min(received_at)                                             as entry_anchor,
+           min(received_at) filter (where event = 'PURCHASE_APPROVED')  as approved_at,
+           max(price)                                                   as price,
+           max(producer_value)                                         as producer_value,
+           max(buyer_email)                                            as buyer_email,
            max(tracking_src) filter (where tracking_src is not null and tracking_src <> '') as src
     from public.vendas
     where transaction is not null
@@ -87,32 +96,32 @@ language sql stable as $fn$
              where t2.buyer_email is not null
                and t2.buyer_email = t.buyer_email
                and t2.src is not null
-               and abs(extract(epoch from (t2.anchor - t.anchor))) <= 1800
-             order by abs(extract(epoch from (t2.anchor - t.anchor))) asc
+               and abs(extract(epoch from (t2.entry_anchor - t.entry_anchor))) <= 1800
+             order by abs(extract(epoch from (t2.entry_anchor - t.entry_anchor))) asc
              limit 1
            )) as eff_src
     from tx0 t
   ),
-  -- Aplica o período e (opcional) o filtro só-anúncio sobre o src EFETIVO (já
-  -- com herança), pra não perder os bumps.
+  -- Aplica só o filtro de anúncio (o período entra por balde, abaixo, porque a
+  -- venda é ancorada na aprovação e os outros baldes na entrada).
   txf as (
     select * from tx
-    where anchor >= p_since and anchor <= p_until
-      and (not p_only_ads or (eff_src is not null and eff_src <> ''))
+    where (not p_only_ads or (eff_src is not null and eff_src <> ''))
   ),
   v as (
     select
-      -- VENDAS = pedidos únicos: comprador + dia (bumps do mesmo checkout não
-      -- recontam). Sem comprador, cai no código da transação (sempre único).
-      count(distinct (coalesce(buyer_email, transaction), anchor::date))
-        filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE'))                             as vendas_real,
-      -- Faturamento/líquido somam TODOS os itens aprovados (inclui bumps).
-      coalesce(sum(price) filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE')),0)         as receita_real,
-      coalesce(sum(producer_value) filter (where last_event in ('PURCHASE_APPROVED','PURCHASE_COMPLETE')),0) as liquido_real,
-      count(*) filter (where last_event in ('PURCHASE_REFUNDED','PURCHASE_CHARGEBACK'))                     as reembolsos_qtd,
-      coalesce(sum(price) filter (where last_event in ('PURCHASE_REFUNDED','PURCHASE_CHARGEBACK')),0)       as reembolsos_valor,
-      count(*) filter (where last_event in ('PURCHASE_BILLET_PRINTED','PURCHASE_DELAYED'))                  as aguardando_qtd,
-      coalesce(sum(price) filter (where last_event in ('PURCHASE_BILLET_PRINTED','PURCHASE_DELAYED')),0)    as aguardando_valor
+      -- VENDAS = pedidos únicos (comprador + dia da aprovação), só transações
+      -- que foram APROVADAS dentro do período (exclui os fantasmas COMPLETE-only).
+      count(distinct (coalesce(buyer_email, transaction), approved_at::date))
+        filter (where approved_at is not null and approved_at >= p_since and approved_at <= p_until)         as vendas_real,
+      -- Faturamento/líquido somam TODOS os itens aprovados no período (inclui bumps).
+      coalesce(sum(price) filter (where approved_at is not null and approved_at >= p_since and approved_at <= p_until),0)          as receita_real,
+      coalesce(sum(producer_value) filter (where approved_at is not null and approved_at >= p_since and approved_at <= p_until),0) as liquido_real,
+      -- Reembolso/aguardando: estado ATUAL, ancorados na entrada da transação.
+      count(*) filter (where last_event in ('PURCHASE_REFUNDED','PURCHASE_CHARGEBACK') and entry_anchor >= p_since and entry_anchor <= p_until)                  as reembolsos_qtd,
+      coalesce(sum(price) filter (where last_event in ('PURCHASE_REFUNDED','PURCHASE_CHARGEBACK') and entry_anchor >= p_since and entry_anchor <= p_until),0)     as reembolsos_valor,
+      count(*) filter (where last_event in ('PURCHASE_BILLET_PRINTED','PURCHASE_DELAYED') and entry_anchor >= p_since and entry_anchor <= p_until)               as aguardando_qtd,
+      coalesce(sum(price) filter (where last_event in ('PURCHASE_BILLET_PRINTED','PURCHASE_DELAYED') and entry_anchor >= p_since and entry_anchor <= p_until),0) as aguardando_valor
     from txf
   ),
   -- Abandono de carrinho NÃO tem código de transação (a Hotmart manda só
