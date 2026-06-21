@@ -4,7 +4,11 @@ import { useState } from 'react'
 
 // Tabela com ordenação por clique no cabeçalho (métricas + status).
 // Recebe linhas já com os números crus; calcula derivadas (CPM, CTR, CPA…) aqui.
-export type Metrics = { spend: number; impressions: number; link_clicks: number; lp_views: number; ic: number; purchases: number; purchase_value: number }
+export type Metrics = {
+  spend: number; impressions: number; link_clicks: number; lp_views: number; ic: number; purchases: number; purchase_value: number
+  // Vendas REAIS da Hotmart (só conjunto/campanha; undefined no nível de anúncio).
+  vendas_real?: number; receita_real?: number
+}
 export type Row = { id: string; lead: (string | null)[]; status?: string; m: Metrics }
 
 const brl = (n: number) => 'R$ ' + (Math.round(n * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })
@@ -24,7 +28,11 @@ const METRICS: Def[] = [
   { key: 'ic', label: 'IC', val: (m) => m.ic, fmt: (m) => int(m.ic) },
   { key: 'purchases', label: 'Compras', val: (m) => m.purchases, fmt: (m) => int(m.purchases), bold: true },
   { key: 'cpa', label: 'CPA', val: (m) => (m.purchases > 0 ? m.spend / m.purchases : 0), fmt: (m) => (m.purchases > 0 ? brl(m.spend / m.purchases) : '—') },
-  { key: 'roas', label: 'ROAS', val: (m) => (m.spend > 0 ? m.purchase_value / m.spend : 0), fmt: (m) => (m.purchase_value > 0 ? (m.purchase_value / m.spend).toFixed(2) + 'x' : '—'), color: (m) => (m.purchase_value <= 0 ? 'var(--mute)' : m.purchase_value / m.spend >= 1 ? 'var(--g)' : '#c0392b') },
+  { key: 'roas', label: 'ROAS pixel', val: (m) => (m.spend > 0 ? m.purchase_value / m.spend : 0), fmt: (m) => (m.purchase_value > 0 ? (m.purchase_value / m.spend).toFixed(2) + 'x' : '—'), color: (m) => (m.purchase_value <= 0 ? 'var(--mute)' : m.purchase_value / m.spend >= 1 ? 'var(--g)' : '#c0392b') },
+  // Vendas reais da Hotmart (— no nível de anúncio: não dá pra atribuir).
+  { key: 'vendas_real', label: 'Vendas✓', val: (m) => m.vendas_real ?? 0, fmt: (m) => (m.vendas_real == null ? '—' : int(m.vendas_real)) },
+  { key: 'receita_real', label: 'Receita✓', val: (m) => m.receita_real ?? 0, fmt: (m) => (m.receita_real == null ? '—' : brl0(m.receita_real)) },
+  { key: 'roas_real', label: 'ROAS real', val: (m) => (m.spend > 0 && m.receita_real != null ? m.receita_real / m.spend : 0), fmt: (m) => (m.receita_real == null || m.receita_real <= 0 ? '—' : (m.receita_real / m.spend).toFixed(2) + 'x'), color: (m) => (m.receita_real == null || m.receita_real <= 0 ? 'var(--mute)' : m.receita_real / m.spend >= 1 ? 'var(--g)' : '#c0392b'), bold: true },
 ]
 const statusRank = (s?: string) => (s === 'ACTIVE' ? 0 : s === 'DISAPPROVED' ? 1 : 2)
 

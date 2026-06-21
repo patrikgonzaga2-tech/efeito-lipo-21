@@ -41,6 +41,56 @@ language sql stable as $a$
   group by ad_id
 $a$;
 
+-- VENDAS REAIS da Hotmart por CONJUNTO (adset.id = tracking_src = utm_term).
+-- Permite ROAS real (receita real ÷ investido) por conjunto e, somando, por
+-- campanha. No nível de ANÚNCIO não dá pra atribuir venda real (o quiz só captura
+-- o id do conjunto), então lá fica só o pixel. Mesma regra das outras abas:
+--  • venda conta pela APROVAÇÃO (PURCHASE_APPROVED), ancorada na data da aprovação
+--    (exclui os fantasmas COMPLETE-only);
+--  • bumps herdam o src do mesmo comprador na janela de ±30 min (não perdem o
+--    conjunto de origem);
+--  • "vendas" = pedidos únicos (comprador + dia); "itens" = produtos (com bumps);
+--  • receita/líquido somam todos os itens.
+drop function if exists public.vendas_por_conjunto(timestamptz, timestamptz);
+create or replace function public.vendas_por_conjunto(p_since timestamptz, p_until timestamptz)
+returns table (adset_id text, vendas bigint, itens bigint, receita numeric, liquido numeric)
+language sql stable as $vc$
+  with tx0 as (
+    select transaction,
+           min(received_at)                                            as entry_anchor,
+           min(received_at) filter (where event = 'PURCHASE_APPROVED') as approved_at,
+           max(price)                                                  as price,
+           max(producer_value)                                         as producer_value,
+           max(buyer_email)                                            as buyer_email,
+           max(tracking_src) filter (where tracking_src is not null and tracking_src <> '') as src
+    from public.vendas
+    where transaction is not null
+    group by transaction
+  ),
+  tx as (
+    select t.*,
+           coalesce(t.src, (
+             select t2.src from tx0 t2
+             where t2.buyer_email is not null
+               and t2.buyer_email = t.buyer_email
+               and t2.src is not null
+               and abs(extract(epoch from (t2.entry_anchor - t.entry_anchor))) <= 1800
+             order by abs(extract(epoch from (t2.entry_anchor - t.entry_anchor))) asc
+             limit 1
+           )) as eff_src
+    from tx0 t
+  )
+  select eff_src as adset_id,
+         count(distinct (coalesce(buyer_email, transaction), approved_at::date)) as vendas,
+         count(*)                                                                as itens,
+         coalesce(sum(price),0)                                                  as receita,
+         coalesce(sum(producer_value),0)                                         as liquido
+  from tx
+  where approved_at is not null and approved_at >= p_since and approved_at <= p_until
+    and eff_src ~ '^[0-9]{6,}$'
+  group by eff_src
+$vc$;
+
 -- Funil completo por ANÚNCIO (do meta_ads). Conversão = compras (pixel); não
 -- há venda real por anúncio (utm_term é adset.id).
 drop function if exists public.ranking_anuncios(timestamptz, timestamptz);
