@@ -8,6 +8,7 @@ export type QuizContext = {
   utm_campaign?: string
   utm_content?: string
   utm_term?: string
+  xcod?: string
   sck?: string
   referrer?: string
   user_agent?: string
@@ -34,6 +35,9 @@ export function captureContext(): QuizContext {
   // Redundância: persiste o id do anúncio na gaveta já no início do quiz, pro
   // botão de compra achá-lo no clique mesmo se a URL sumir depois.
   try { const t = g('utm_term'); if (t) sessionStorage.setItem('el_utm_term', t) } catch { /* ignore */ }
+  // xcod (user_id_purchase): da URL (onde o GTM injeta) ou da gaveta do navegador.
+  let xcod: string | undefined
+  try { xcod = g('xcod') || window.localStorage.getItem('user_id_purchase') || undefined } catch { /* ignore */ }
   return {
     variante: g('variante'),
     utm_source: g('utm_source'),
@@ -41,6 +45,7 @@ export function captureContext(): QuizContext {
     utm_campaign: g('utm_campaign'),
     utm_content: g('utm_content'),
     utm_term: g('utm_term'),
+    xcod,
     sck: g('sck'),
     referrer: document.referrer || undefined,
     user_agent: navigator.userAgent,

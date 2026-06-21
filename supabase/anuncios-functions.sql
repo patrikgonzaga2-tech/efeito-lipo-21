@@ -91,6 +91,65 @@ language sql stable as $vc$
   group by eff_src
 $vc$;
 
+-- VENDAS REAIS por ANÚNCIO (criativo), via PONTE pelo xcod.
+-- A venda da Hotmart não carrega o anúncio — só o conjunto (src). Mas carrega o
+-- xcod (id de dedup do Meta = user_id_purchase). A sessão do quiz passou a gravar
+-- esse mesmo xcod + o nome do anúncio (utm_content). Então ligamos:
+--   venda.tracking_xcod  →  quiz_sessions.xcod  →  utm_content (nome do anúncio).
+-- Só funciona pra vendas DEPOIS que a ponte entrou no ar (a sessão precisa ter o
+-- xcod gravado). Vendas antigas caem em "(sem anúncio identificado)". O anúncio é
+-- identificado pelo NOME (utm_content): nomes iguais se somam.
+drop function if exists public.vendas_por_anuncio(timestamptz, timestamptz);
+create or replace function public.vendas_por_anuncio(p_since timestamptz, p_until timestamptz)
+returns table (anuncio text, adset_id text, vendas bigint, itens bigint, receita numeric, liquido numeric)
+language sql stable as $va$
+  with tx0 as (
+    select transaction,
+           min(received_at)                                            as entry_anchor,
+           min(received_at) filter (where event = 'PURCHASE_APPROVED') as approved_at,
+           max(price)                                                  as price,
+           max(producer_value)                                         as producer_value,
+           max(buyer_email)                                            as buyer_email,
+           max(tracking_src) filter (where tracking_src is not null and tracking_src <> '')  as src,
+           max(tracking_xcod) filter (where tracking_xcod is not null and tracking_xcod <> '') as xcod
+    from public.vendas
+    where transaction is not null
+    group by transaction
+  ),
+  tx as (
+    select t.*,
+           coalesce(t.src, (
+             select t2.src from tx0 t2
+             where t2.buyer_email is not null and t2.buyer_email = t.buyer_email
+               and t2.src is not null
+               and abs(extract(epoch from (t2.entry_anchor - t.entry_anchor))) <= 1800
+             order by abs(extract(epoch from (t2.entry_anchor - t.entry_anchor))) asc
+             limit 1
+           )) as eff_src
+    from tx0 t
+  ),
+  -- nome do anúncio (e conjunto) por xcod, vindo da sessão do quiz
+  sess as (
+    select xcod,
+           mode() within group (order by utm_content) as anuncio,
+           mode() within group (order by utm_term)    as adset_id
+    from public.quiz_sessions
+    where xcod is not null and xcod <> ''
+    group by xcod
+  )
+  select coalesce(nullif(s.anuncio, ''), '(sem anúncio identificado)') as anuncio,
+         coalesce(s.adset_id, tx.eff_src)                              as adset_id,
+         count(distinct (coalesce(tx.buyer_email, tx.transaction), tx.approved_at::date)) as vendas,
+         count(*)                          as itens,
+         coalesce(sum(tx.price),0)         as receita,
+         coalesce(sum(tx.producer_value),0) as liquido
+  from tx
+  left join sess s on s.xcod = tx.xcod
+  where tx.approved_at is not null and tx.approved_at >= p_since and tx.approved_at <= p_until
+  group by 1, 2
+  order by receita desc
+$va$;
+
 -- Funil completo por ANÚNCIO (do meta_ads). Conversão = compras (pixel); não
 -- há venda real por anúncio (utm_term é adset.id).
 drop function if exists public.ranking_anuncios(timestamptz, timestamptz);

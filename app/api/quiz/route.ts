@@ -9,6 +9,7 @@ type Body = {
   variante?: string
   intro_ab?: string // teste A/B da 1ª tela: 'A' (original) | 'B' (nova)
   utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; utm_term?: string
+  xcod?: string // id de dedup do Meta (user_id_purchase) — ponte venda↔anúncio
   sck?: string; referrer?: string; user_agent?: string
   reached_index?: number
   step_index?: number
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
         utm_source: b.utm_source ?? null, utm_medium: b.utm_medium ?? null,
         utm_campaign: b.utm_campaign ?? null, utm_content: b.utm_content ?? null, utm_term: b.utm_term ?? null,
         sck: b.sck ?? null, referrer: b.referrer ?? null, user_agent: b.user_agent ?? null,
+        ...(b.xcod ? { xcod: b.xcod } : {}),
       })
       await sbInsert('quiz_events', { session_id: id, event: 'pageview' })
     } else if (action === 'start') {
@@ -50,6 +52,7 @@ export async function POST(req: Request) {
         utm_source: b.utm_source ?? null, utm_medium: b.utm_medium ?? null,
         utm_campaign: b.utm_campaign ?? null, utm_content: b.utm_content ?? null, utm_term: b.utm_term ?? null,
         sck: b.sck ?? null, referrer: b.referrer ?? null, user_agent: b.user_agent ?? null,
+        ...(b.xcod ? { xcod: b.xcod } : {}),
       })
       await sbInsert('quiz_events', { session_id: id, event: 'start' })
     } else if (action === 'step') {
@@ -63,7 +66,9 @@ export async function POST(req: Request) {
       })
       await sbInsert('quiz_events', { session_id: id, event: 'complete' })
     } else if (action === 'checkout') {
-      await sbUpsert('quiz_sessions', { id, checkout_clicked: true, checkout_at: now, updated_at: now })
+      // No clique de compra o xcod (user_id_purchase) já existe — é o mesmo que
+      // segue pra Hotmart no link. Gravamos aqui pra ligar a venda ao anúncio.
+      await sbUpsert('quiz_sessions', { id, checkout_clicked: true, checkout_at: now, updated_at: now, ...(b.xcod ? { xcod: b.xcod } : {}) })
       await sbInsert('quiz_events', { session_id: id, event: 'checkout' })
     }
     return Response.json({ ok: true })

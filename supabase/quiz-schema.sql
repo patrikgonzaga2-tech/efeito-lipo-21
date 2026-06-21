@@ -17,6 +17,7 @@ create table if not exists public.quiz_sessions (
   utm_campaign  text,
   utm_content   text,
   utm_term      text,
+  xcod          text,                            -- id de dedup do Meta (user_id_purchase); ponte p/ ligar a venda da Hotmart ao anúncio (utm_content)
   sck           text,
   referrer      text,
   user_agent    text,

@@ -127,7 +127,7 @@ export default function QuizApp() {
     return <Intro onStart={() => { const intro_ab = (typeof window !== 'undefined' && sessionStorage.getItem(INTRO_AB_KEY)) || undefined; persist({ id: sidRef.current, action: 'start', intro_ab, ...captureContext() }); track('quiz_start', { intro_ab }); next() }} />
   }
   if (step.kind === 'sales') {
-    return <Sales perfil={perfil} onCheckout={() => { persist({ id: sidRef.current, action: 'checkout' }); track('initiate_checkout', { variante: 'efeito-lipo-quiz' }) }} />
+    return <Sales perfil={perfil} onCheckout={() => { persist({ id: sidRef.current, action: 'checkout', xcod: readXcod() ?? undefined }); track('initiate_checkout', { variante: 'efeito-lipo-quiz' }) }} />
   }
 
   const darkBg = step.kind === 'loading' || step.kind === 'result'
