@@ -68,7 +68,8 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
       {/* Macro */}
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))' }}>
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
-        <Card label="Vendas" value={int(vendas)} sub={`${int(itens)} produtos vendidos${itens > vendas ? ` · +${int(itens - vendas)} em order bumps` : ''}`} accent="var(--g)" />
+        <Card label="Vendas" value={int(vendas)} sub="pedidos (clientes)" accent="var(--g)" />
+        <Card label="Produtos vendidos" value={int(itens)} sub={itens > vendas ? `inclui +${int(itens - vendas)} em order bumps` : 'sem order bumps'} accent="var(--g)" />
         <Card label="Faturamento" value={brl0(receita)} sub={`bruto · ticket ${vendas ? brl(ticket) : '—'} / pedido`} accent="var(--g)" />
         <Card label="Líquido" value={brl0(liquido)} sub={`após taxas Hotmart${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
         <Card label="Margem" value={receita > 0 ? pct1(liquido, receita) : '—'} sub="líquido ÷ bruto (sobra das taxas)" accent={receita > 0 ? (margem >= 0.8 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
