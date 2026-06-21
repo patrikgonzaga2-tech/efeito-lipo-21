@@ -155,11 +155,11 @@ $va$;
 drop function if exists public.ranking_anuncios(timestamptz, timestamptz);
 create function public.ranking_anuncios(p_since timestamptz, p_until timestamptz)
 returns table (
-  ad_id text, ad_name text, adset_name text, campaign_name text,
+  ad_id text, ad_name text, adset_id text, adset_name text, campaign_id text, campaign_name text,
   spend numeric, impressions bigint, link_clicks bigint, lp_views bigint, ic bigint, purchases bigint, purchase_value numeric
 )
 language sql stable as $b$
-  select ad_id, max(ad_name), max(adset_name), max(campaign_name),
+  select ad_id, max(ad_name), max(adset_id), max(adset_name), max(campaign_id), max(campaign_name),
          sum(spend), sum(impressions), sum(link_clicks), sum(lp_views), sum(ic), sum(purchases), sum(purchase_value)
   from public.meta_ads
   where date >= (p_since at time zone 'America/Sao_Paulo')::date

@@ -9,7 +9,7 @@ export type Metrics = {
   // Vendas REAIS da Hotmart (só conjunto/campanha; undefined no nível de anúncio).
   vendas_real?: number; receita_real?: number
 }
-export type Row = { id: string; lead: (string | null)[]; status?: string; m: Metrics }
+export type Row = { id: string; lead: (string | null)[]; status?: string; m: Metrics; campaignId?: string; adsetId?: string }
 
 const brl = (n: number) => 'R$ ' + (Math.round(n * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })
 const brl0 = (n: number) => 'R$ ' + Math.round(n).toLocaleString('pt-BR')
@@ -51,7 +51,7 @@ const thR: React.CSSProperties = { ...thL, textAlign: 'right', cursor: 'pointer'
 const tdL: React.CSSProperties = { padding: '8px 10px', fontSize: 13, color: 'var(--ink)', textAlign: 'left', whiteSpace: 'nowrap' }
 const tdR: React.CSSProperties = { ...tdL, textAlign: 'right' }
 
-export function SortableTable({ leadHead, rows, showRank, hasStatus, defaultSort }: { leadHead: string[]; rows: Row[]; showRank?: boolean; hasStatus?: boolean; defaultSort?: string }) {
+export function SortableTable({ leadHead, rows, showRank, hasStatus, defaultSort, onPick, selectedId }: { leadHead: string[]; rows: Row[]; showRank?: boolean; hasStatus?: boolean; defaultSort?: string; onPick?: (id: string) => void; selectedId?: string | null }) {
   const [sortKey, setSortKey] = useState(defaultSort || 'spend')
   const [dir, setDir] = useState<'asc' | 'desc'>('desc')
   const toggle = (k: string) => { if (sortKey === k) setDir((d) => (d === 'desc' ? 'asc' : 'desc')); else { setSortKey(k); setDir('desc') } }
@@ -77,14 +77,19 @@ export function SortableTable({ leadHead, rows, showRank, hasStatus, defaultSort
         </thead>
         <tbody>
           {sorted.length === 0 && <tr><td colSpan={colSpan} style={{ ...tdL, textAlign: 'center', color: 'var(--mute)', padding: 20 }}>Sem dados no período.</td></tr>}
-          {sorted.map((r, i) => (
-            <tr key={r.id} style={{ borderTop: '1px solid rgba(0,0,0,.05)' }}>
+          {sorted.map((r, i) => {
+            const active = onPick != null && selectedId === r.id
+            return (
+            <tr key={r.id} onClick={onPick ? () => onPick(r.id) : undefined}
+              title={onPick ? (active ? 'Clique pra remover o filtro' : 'Clique pra filtrar por isto') : undefined}
+              style={{ borderTop: '1px solid rgba(0,0,0,.05)', cursor: onPick ? 'pointer' : undefined, background: active ? 'rgba(245,113,0,.10)' : undefined }}>
               {showRank && <td style={{ ...tdL, color: 'var(--mute)', fontWeight: 700 }}>{i + 1}</td>}
               {r.lead.map((c, j) => <td key={j} style={{ ...tdL, fontWeight: j === 0 ? 600 : undefined, color: j === 0 ? 'var(--ink)' : 'var(--sub)', fontSize: j === 0 ? 13 : 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c || '—'}</td>)}
               {hasStatus && <td style={tdL}><StatusBadge status={r.status} /></td>}
               {METRICS.map((md) => <td key={md.key} style={{ ...tdR, fontWeight: md.bold ? 800 : undefined, color: md.color?.(r.m) }}>{md.fmt(r.m)}</td>)}
             </tr>
-          ))}
+            )
+          })}
         </tbody>
       </table>
     </div>
