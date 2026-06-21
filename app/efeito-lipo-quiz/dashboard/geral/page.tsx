@@ -56,7 +56,8 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
   const roas = div(receita, spend) // ROAS blended (todas as vendas ÷ todo o investimento)
   const lucro = liquido - spend
   const cac = div(spend, vendas)
-  const ticket = div(receita, vendas)
+  const ticket = div(receita, vendas)          // faturamento bruto por venda (pedido)
+  const lucroPorVenda = div(lucro, vendas)      // lucro líquido (após taxas e ads) por venda
 
   return (
     <DashboardShell active="geral">
@@ -70,7 +71,9 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
         <Card label="Vendas" value={int(vendas)} sub="pedidos (clientes)" accent="var(--g)" />
         <Card label="Produtos vendidos" value={int(itens)} sub={itens > vendas ? `inclui +${int(itens - vendas)} em order bumps` : 'sem order bumps'} accent="var(--g)" />
-        <Card label="Faturamento" value={brl0(receita)} sub={`bruto · ticket ${vendas ? brl(ticket) : '—'} / pedido`} accent="var(--g)" />
+        <Card label="Faturamento" value={brl0(receita)} sub="bruto · todas as origens" accent="var(--g)" />
+        <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="faturamento ÷ vendas" accent="var(--g)" />
+        <Card label="Lucro por venda" value={vendas > 0 ? brl(lucroPorVenda) : '—'} sub="lucro líquido ÷ vendas" accent={lucroPorVenda >= 0 ? 'var(--g)' : '#c0392b'} />
         <Card label="Líquido" value={brl0(liquido)} sub={`após taxas Hotmart${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
         <Card label="Margem" value={receita > 0 ? pct1(liquido, receita) : '—'} sub="líquido ÷ bruto (sobra das taxas)" accent={receita > 0 ? (margem >= 0.8 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
         <Card label="Lucro" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />

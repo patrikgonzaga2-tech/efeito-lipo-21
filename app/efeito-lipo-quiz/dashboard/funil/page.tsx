@@ -52,7 +52,8 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   const roas = div(receita, spend) // ROAS do funil: faturamento do funil ÷ investido
   const lucro = liquido - spend
   const cac = div(spend, vendas)
-  const ticket = div(receita, vendas)
+  const ticket = div(receita, vendas)          // faturamento bruto por venda (pedido)
+  const lucroPorVenda = div(lucro, vendas)      // lucro líquido (após taxas e ads) por venda
   const taxasPct = pct1(receita - liquido, receita)
   const margem = div(liquido, receita)
 
@@ -81,7 +82,9 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
         <Card label="Vendas do funil" value={int(vendas)} sub="pedidos (clientes)" accent="var(--g)" />
         <Card label="Produtos vendidos" value={int(itens)} sub={itens > vendas ? `inclui +${int(itens - vendas)} em order bumps` : 'sem order bumps'} accent="var(--g)" />
-        <Card label="Faturamento do funil" value={brl0(receita)} sub={`bruto (com bumps) · ticket ${vendas ? brl(ticket) : '—'} / pedido`} accent="var(--g)" />
+        <Card label="Faturamento do funil" value={brl0(receita)} sub="bruto (com bumps)" accent="var(--g)" />
+        <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="faturamento ÷ vendas" accent="var(--g)" />
+        <Card label="Lucro por venda" value={vendas > 0 ? brl(lucroPorVenda) : '—'} sub="lucro líquido ÷ vendas" accent={lucroPorVenda >= 0 ? 'var(--g)' : '#c0392b'} />
         <Card label="Líquido do funil" value={brl0(liquido)} sub={`após taxas Hotmart${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
         <Card label="Margem" value={receita > 0 ? pct1(liquido, receita) : '—'} sub="líquido ÷ bruto" accent={receita > 0 ? (margem >= 0.8 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
         <Card label="Lucro do funil" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
