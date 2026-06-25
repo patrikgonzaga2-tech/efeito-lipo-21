@@ -7,3 +7,9 @@ project_id = "fjlbvoephhextnxemygf"
 # validado dentro do código.
 [functions.hotmart-webhook]
 verify_jwt = false
+
+# Webhook da Greenn: mesma ideia — a Greenn não faz login, então a função NÃO
+# pode exigir JWT. A segurança é o token secreto na URL (?token=...), validado
+# dentro do código contra GREENN_WEBHOOK_TOKEN.
+[functions.greenn-webhook]
+verify_jwt = false
