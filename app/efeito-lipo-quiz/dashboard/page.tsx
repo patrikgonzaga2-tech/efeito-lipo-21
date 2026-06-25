@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
-// O dashboard abre direto na aba Geral (resultado completo).
+// O endereço antigo agora leva ao novo lar: o Painel da Marca (Hotmart + Greenn).
+// As páginas da seção Efeito Lipo seguem acessíveis pela navegação do painel.
 export default function DashboardIndex() {
-  redirect('/efeito-lipo-quiz/dashboard/geral')
+  redirect('/painel')
 }

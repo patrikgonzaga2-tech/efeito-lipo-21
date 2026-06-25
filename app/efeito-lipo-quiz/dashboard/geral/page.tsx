@@ -40,8 +40,10 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
 
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
-  // Geral = TODAS as vendas (sem filtro de funil): anúncios + orgânico + WhatsApp.
-  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until })
+  // Geral = TODAS as vendas da HOTMART (sem filtro de funil): anúncios + orgânico
+  // + WhatsApp. Travado em 'hotmart' porque esta é a seção Efeito Lipo; a visão da
+  // marca toda (Hotmart + Greenn) fica no painel /painel.
+  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_gateway: 'hotmart' })
   const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, itens_vendidos: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0
   const spend = n(d.spend), vendas = n(d.vendas_real), itens = n(d.itens_vendidos), receita = n(d.receita_real)

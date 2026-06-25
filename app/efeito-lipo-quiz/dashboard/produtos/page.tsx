@@ -42,7 +42,8 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Pro
 
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
-  const produtos = await sbRpc<Prod>('vendas_por_produto', { p_since: since, p_until: until })
+  // Seção Efeito Lipo: travado em 'hotmart'. O catálogo da marca toda fica no /painel.
+  const produtos = await sbRpc<Prod>('vendas_por_produto', { p_since: since, p_until: until, p_gateway: 'hotmart' })
 
   const totals: Record<Cat, { vendas: number; receita: number; liquido: number; reemb: number }> = {
     main: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, cinturinha: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, livro: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, vitalicio: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, outro: { vendas: 0, receita: 0, liquido: 0, reemb: 0 },

@@ -25,6 +25,7 @@ export function DashboardShell({ active, children }: { active: string; children:
       <aside className="md:w-56 md:shrink-0 md:min-h-[100dvh] md:sticky md:top-0 z-20" style={{ background: 'var(--gd)', color: '#fff' }}>
         <div className="px-5 py-4 font-display" style={{ fontWeight: 800, fontSize: 18 }}>
           Dashboard <span style={{ color: 'var(--o)' }}>Efeito Lipo</span>
+          <a href="/painel" className="block" style={{ fontSize: 11.5, fontWeight: 700, color: 'rgba(255,255,255,.55)', marginTop: 3, textDecoration: 'none' }}>← Painel da Marca</a>
         </div>
         <nav className="px-3 pb-3">
           {GROUPS.map((g) => (

@@ -42,7 +42,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   const { since, until, range, periodLabel } = resolvePeriod(sp)
   // Funil = só vendas que vieram de anúncio (têm src = id do anúncio). Exclui
   // orgânico/sem-rastreio/WhatsApp. O gasto/funil do Meta continua completo.
-  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_only_ads: true })
+  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_only_ads: true, p_gateway: 'hotmart' })
   const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, itens_vendidos: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0
   const spend = n(d.spend), impr = n(d.impressions), clk = n(d.link_clicks), pv = n(d.lp_views)
