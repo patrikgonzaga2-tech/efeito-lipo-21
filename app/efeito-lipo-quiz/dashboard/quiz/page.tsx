@@ -26,6 +26,7 @@ type SessionRow = {
   completed_at?: string | null
   checkout_clicked?: boolean | null
   checkout_at?: string | null
+  checkout_ab?: string | null
 }
 
 // ── helpers de rótulo ───────────────────────────────────────────────
@@ -118,12 +119,48 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // Números REAIS do Meta + vendas, pro mesmo período (pra comparar com o
   // rastreio próprio do quiz). funil_resumo soma o funil do Meta e as vendas.
-  type Resumo = { lp_views: number; ic: number; purchases_meta: number; vendas_real: number }
-  const [resumo] = await sbRpc<Resumo>('funil_resumo', { p_since: sinceIso, p_until: untilIso ?? new Date().toISOString() })
+  type Resumo = { spend: number; lp_views: number; ic: number; purchases_meta: number; vendas_real: number }
+  const untilForRpc = untilIso ?? new Date().toISOString()
+  const [resumo] = await sbRpc<Resumo>('funil_resumo', { p_since: sinceIso, p_until: untilForRpc })
   const realPV = Number(resumo?.lp_views) || 0
   const realIC = Number(resumo?.ic) || 0
   const realCompras = Number(resumo?.purchases_meta) || 0
   const realVendas = Number(resumo?.vendas_real) || 0
+  const realSpend = Number(resumo?.spend) || 0
+
+  // ── Teste A/B de checkout: Hotmart × Greenn ───────────────────────
+  // Vendas/receita por gateway, SÓ do funil do quiz (tracking_sck=efeito-lipo-
+  // quiz), via RPC quiz_checkout_ab. O denominador (quantos entraram em cada
+  // checkout) vem das próprias sessões: checkout_ab é gravado no clique de compra.
+  type CheckoutRow = { gateway: string; vendas: number; itens: number; receita: number; liquido: number; reembolsos: number; reembolsos_valor: number }
+  let checkoutRows: CheckoutRow[] = []
+  try { checkoutRows = await sbRpc<CheckoutRow>('quiz_checkout_ab', { p_since: sinceIso, p_until: untilForRpc }) } catch { checkoutRows = [] }
+  const checkoutAb = (['hotmart', 'greenn'] as const).map((g) => {
+    const cliques = sessions.filter((s) => s.checkout_ab === g).length
+    const row = checkoutRows.find((r) => r.gateway === g)
+    const vendas = Number(row?.vendas) || 0
+    const receita = Number(row?.receita) || 0
+    const liquido = Number(row?.liquido) || 0
+    // Gasto rateado pela fatia de cliques do braço (o Meta não separa por
+    // checkout — o mesmo tráfego é dividido, então o rateio é proporcional).
+    const totalCliques = sessions.filter((s) => s.checkout_ab === 'hotmart' || s.checkout_ab === 'greenn').length
+    const spendArm = totalCliques > 0 ? realSpend * (cliques / totalCliques) : 0
+    return {
+      g,
+      label: g === 'hotmart' ? 'Hotmart (A)' : 'Greenn (B)',
+      cliques,
+      vendas,
+      receita,
+      liquido,
+      taxa: pct(vendas, cliques),
+      rps: cliques > 0 ? receita / cliques : 0, // receita por clique de checkout
+      roas: spendArm > 0 ? receita / spendArm : 0,
+    }
+  })
+  const abCkLeader = checkoutAb[0].cliques && checkoutAb[1].cliques
+    ? (checkoutAb[0].taxa === checkoutAb[1].taxa ? null : checkoutAb[1].taxa > checkoutAb[0].taxa ? 'greenn' : 'hotmart')
+    : null
+  const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 
   // Pageviews = TODAS as linhas (toda sessão nasce na 1ª tela, com status
   // 'pageview'). Inícios = quem clicou em "Iniciar" (status deixa de ser
@@ -223,6 +260,35 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </Section>
 
+      <Section title="Teste A/B — checkout (Hotmart × Greenn)">
+        <div className="grid gap-4 md:grid-cols-2">
+          {checkoutAb.map((c) => {
+            const win = abCkLeader === c.g
+            return (
+              <div key={c.g} className="rounded-2xl p-5" style={{ background: '#fff', border: win ? '2px solid var(--g)' : '1px solid rgba(0,0,0,.07)', boxShadow: '0 4px 16px rgba(0,0,0,.04)' }}>
+                <div className="flex items-center gap-2" style={{ marginBottom: 2 }}>
+                  <span className="font-display" style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>{c.label}</span>
+                  {win && <span style={{ marginLeft: 'auto', fontSize: 11.5, fontWeight: 800, color: 'var(--g)', textTransform: 'uppercase', letterSpacing: '.04em' }}>na frente ▲</span>}
+                </div>
+                <div className="font-display" style={{ fontSize: 40, fontWeight: 800, color: c.g === 'hotmart' ? 'var(--gd)' : 'var(--o)', lineHeight: 1.1, marginTop: 6 }}>{c.taxa}%</div>
+                <div style={{ fontSize: 12.5, color: 'var(--sub)' }}>taxa de conversão (vendas ÷ quem entrou no checkout)</div>
+                <div className="grid grid-cols-2 gap-3" style={{ marginTop: 14 }}>
+                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Entraram</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)' }}>{c.cliques}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Vendas</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--g)' }}>{c.vendas}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Receita</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)' }}>{brl(c.receita)}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Receita / entrada</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--o)' }}>{brl(c.rps)}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>ROAS (estim.)</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)' }}>{c.roas ? `${c.roas.toFixed(2)}x` : '—'}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Líquido</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)' }}>{brl(c.liquido)}</div></div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 10 }}>
+          Sorteio 50/50 por sessão. <strong>Entraram</strong> = clicaram em comprar e foram para aquele checkout. <strong>Vendas/Receita</strong> vêm da tabela real de vendas, filtradas pelo funil do quiz (só este funil, mesmo que a Greenn tenha outros produtos). O <strong>ROAS é estimado</strong>: o Meta não separa gasto por checkout, então o gasto é rateado pela fatia de entradas de cada braço — a métrica mais limpa para decidir o vencedor é <strong>Receita / entrada</strong>. Vendas por boleto podem cair dias depois do clique.
+        </div>
+      </Section>
+
       <Section title="Funil — abandono por tela">
         <div className="rounded-2xl p-5 space-y-2" style={{ background: '#fff', border: '1px solid rgba(0,0,0,.07)' }}>
           {funnelSteps.map((f) => <Bar key={f.i} label={f.label} value={f.count} total={funnelTotal} color={f.i >= 24 ? 'var(--g)' : 'var(--o)'} />)}
@@ -282,7 +348,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{s.variante || '—'}</td>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{s.utm_source || '—'}</td>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{s.peso ? `${s.peso}→${s.meta_peso ?? '?'}kg` : '—'}</td>
-                  <td style={{ padding: '9px 12px' }}>{s.checkout_clicked ? '✅' : '—'}</td>
+                  <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{s.checkout_clicked ? (s.checkout_ab === 'greenn' ? '✅ Greenn' : s.checkout_ab === 'hotmart' ? '✅ Hotmart' : '✅') : '—'}</td>
                 </tr>
               ))}
               {!recent.length && <tr><td colSpan={8} style={{ padding: 20, textAlign: 'center', color: 'var(--mute)' }}>Nenhuma sessão ainda. Faça o quiz para gerar dados.</td></tr>}

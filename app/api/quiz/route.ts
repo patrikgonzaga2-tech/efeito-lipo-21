@@ -8,6 +8,7 @@ type Body = {
   action?: 'pageview' | 'start' | 'step' | 'complete' | 'checkout'
   variante?: string
   intro_ab?: string // teste A/B da 1ª tela: 'A' (original) | 'B' (nova)
+  checkout_ab?: string // teste A/B de checkout: 'hotmart' | 'greenn'
   utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; utm_term?: string
   xcod?: string // id de dedup do Meta (user_id_purchase) — ponte venda↔anúncio
   sck?: string; referrer?: string; user_agent?: string
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
     } else if (action === 'checkout') {
       // No clique de compra o xcod (user_id_purchase) já existe — é o mesmo que
       // segue pra Hotmart no link. Gravamos aqui pra ligar a venda ao anúncio.
-      await sbUpsert('quiz_sessions', { id, checkout_clicked: true, checkout_at: now, updated_at: now, ...(b.xcod ? { xcod: b.xcod } : {}) })
+      await sbUpsert('quiz_sessions', { id, checkout_clicked: true, checkout_at: now, updated_at: now, ...(b.xcod ? { xcod: b.xcod } : {}), ...(b.checkout_ab ? { checkout_ab: b.checkout_ab } : {}) })
       await sbInsert('quiz_events', { session_id: id, event: 'checkout' })
     }
     return Response.json({ ok: true })

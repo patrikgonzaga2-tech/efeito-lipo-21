@@ -82,6 +82,57 @@ export function readXcod(): string | null {
   }
 }
 
+// ── Teste A/B de checkout: Hotmart (A) × Greenn (B) ───────────────────
+// TODO o controle do teste mora aqui. Para ENCERRAR: ponha enabled:false
+// (tudo volta pra Hotmart, comportamento antigo). Para mudar a divisão: ajuste
+// greennShare (0.5 = 50/50, 0.2 = 20% Greenn, etc.). Uma linha, sem tocar na
+// lógica. O braço é sorteado UMA vez por sessão e guardado na "gaveta" do
+// navegador — recargas e cliques repetidos caem sempre no mesmo checkout.
+export const CHECKOUT_AB = {
+  enabled: true,
+  greennShare: 0.5,
+}
+export const CHECKOUT_AB_KEY = 'el_checkout_ab'
+export type CheckoutArm = 'hotmart' | 'greenn'
+
+// Checkout Greenn (variante B). MESMO funil: o redirect da Greenn repassa a
+// query string inteira ao checkout real, que grava tudo em saleMetas — que o
+// greenn-webhook já lê. Mapeamento espelhado ao da Hotmart:
+//   utm_source=efeito-lipo-quiz → tracking_sck  (marca o funil do quiz)
+//   utm_term=<id do anúncio>    → tracking_src  (o mesmo que vai no src Hotmart)
+//   utm_content=<xcod>          → tracking_xcod (ponte de dedup com o Meta)
+export const CHECKOUT_HREF_GREENN =
+  'https://payfast.greenn.com.br/redirect/297174?utm_source=efeito-lipo-quiz'
+
+// Sorteia (ou relê da gaveta) o braço do teste para ESTA sessão. Client-only:
+// roda só no navegador, então não há divergência de hidratação — o link inicial
+// no servidor é sempre o da Hotmart (CHECKOUT_HREF) e o braço é aplicado depois.
+export function pickCheckoutArm(): CheckoutArm {
+  if (typeof window === 'undefined') return 'hotmart'
+  try {
+    const saved = sessionStorage.getItem(CHECKOUT_AB_KEY)
+    if (saved === 'hotmart' || saved === 'greenn') return saved
+    const arm: CheckoutArm =
+      CHECKOUT_AB.enabled && Math.random() < CHECKOUT_AB.greennShare ? 'greenn' : 'hotmart'
+    try { sessionStorage.setItem(CHECKOUT_AB_KEY, arm) } catch { /* ignore */ }
+    return arm
+  } catch {
+    return 'hotmart'
+  }
+}
+
+// Monta o link do checkout do braço, colando o rastreio fresco. Greenn usa os
+// nomes UTM; Hotmart usa src/xcod — os dois caem no lugar certo no webhook.
+export function checkoutHrefFor(arm: CheckoutArm, adId?: string | null, xcod?: string | null): string {
+  if (arm === 'greenn') {
+    const extra: string[] = []
+    if (adId) extra.push(`utm_term=${encodeURIComponent(adId)}`)
+    if (xcod) extra.push(`utm_content=${encodeURIComponent(xcod)}`)
+    return extra.length ? `${CHECKOUT_HREF_GREENN}&${extra.join('&')}` : CHECKOUT_HREF_GREENN
+  }
+  return checkoutHref(adId, xcod)
+}
+
 export type BodyVariant = 'lean' | 'bloated' | 'soft' | 'over' | 'much'
 export type RegionKey = 'belly' | 'arms' | 'waist' | 'hips' | 'full' | 'none'
 

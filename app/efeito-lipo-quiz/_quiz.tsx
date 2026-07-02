@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import {
-  CHECKOUT_HREF, checkoutHref, readAdId, readXcod, IMG, INSIGHT, LAURA_PARAGRAFOS, PROVA_GRID,
+  CHECKOUT_HREF, checkoutHrefFor, pickCheckoutArm, readAdId, readXcod, IMG, INSIGHT, LAURA_PARAGRAFOS, PROVA_GRID,
   RESULT_MARCOS, SALES, STEPS,
 } from './_data'
 import type { ImgKey, Step } from './_data'
@@ -127,7 +127,7 @@ export default function QuizApp() {
     return <Intro onStart={() => { const intro_ab = (typeof window !== 'undefined' && sessionStorage.getItem(INTRO_AB_KEY)) || undefined; persist({ id: sidRef.current, action: 'start', intro_ab, ...captureContext() }); track('quiz_start', { intro_ab }); next() }} />
   }
   if (step.kind === 'sales') {
-    return <Sales perfil={perfil} onCheckout={() => { persist({ id: sidRef.current, action: 'checkout', xcod: readXcod() ?? undefined }); track('initiate_checkout', { variante: 'efeito-lipo-quiz' }) }} />
+    return <Sales perfil={perfil} onCheckout={() => { const arm = pickCheckoutArm(); persist({ id: sidRef.current, action: 'checkout', xcod: readXcod() ?? undefined, checkout_ab: arm }); track('initiate_checkout', { variante: 'efeito-lipo-quiz', checkout_ab: arm }) }} />
   }
 
   const darkBg = step.kind === 'loading' || step.kind === 'result'
@@ -543,7 +543,7 @@ function Sales({ perfil, onCheckout }: { perfil: InnerProps['perfil']; onCheckou
   // fixo (igual no servidor, evita erro de hidratação) e, já no navegador,
   // acrescenta o src quando o anúncio trouxe o id na URL.
   const [href, setHref] = useState(CHECKOUT_HREF)
-  const buildHref = () => checkoutHref(readAdId(), readXcod())
+  const buildHref = () => checkoutHrefFor(pickCheckoutArm(), readAdId(), readXcod())
   useEffect(() => { setHref(buildHref()) }, [])
   // No clique, remonta o link com o rastreio mais fresco (gaveta do navegador) e
   // atualiza o próprio <a> ANTES da navegação — elimina a corrida com a
