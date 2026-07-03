@@ -95,14 +95,15 @@ export const CHECKOUT_AB = {
 export const CHECKOUT_AB_KEY = 'el_checkout_ab'
 export type CheckoutArm = 'hotmart' | 'greenn'
 
-// Checkout Greenn (variante B). MESMO funil: o redirect da Greenn repassa a
-// query string inteira ao checkout real, que grava tudo em saleMetas — que o
-// greenn-webhook já lê. Mapeamento espelhado ao da Hotmart:
+// Checkout Greenn (variante B). Oferta com order bumps (b_id/b_offer). O
+// checkout da Greenn lê os UTMs da URL e grava em saleMetas — que o greenn-
+// webhook já lê. Mantemos os params próprios da oferta (ch_id/bumps) e colamos
+// o rastreio, espelhando o mapeamento da Hotmart:
 //   utm_source=efeito-lipo-quiz → tracking_sck  (marca o funil do quiz)
 //   utm_term=<id do anúncio>    → tracking_src  (o mesmo que vai no src Hotmart)
 //   utm_content=<xcod>          → tracking_xcod (ponte de dedup com o Meta)
 export const CHECKOUT_HREF_GREENN =
-  'https://payfast.greenn.com.br/redirect/297174?utm_source=efeito-lipo-quiz'
+  'https://payfast.greenn.com.br/nbr5yfk/offer/QN7gci?ch_id=140597&b_id_1=123059&b_offer_1=riJmPB&b_id_2=2d2j25c&b_offer_2=TkxWcG&b_id_3=6ahzaqp&b_offer_3=EtpQXF&utm_source=efeito-lipo-quiz'
 
 // Sorteia (ou relê da gaveta) o braço do teste para ESTA sessão. Client-only:
 // roda só no navegador, então não há divergência de hidratação — o link inicial
