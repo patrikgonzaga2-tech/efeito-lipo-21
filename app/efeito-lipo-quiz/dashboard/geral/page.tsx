@@ -40,10 +40,13 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
 
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
-  // Geral = TODAS as vendas da HOTMART (sem filtro de funil): anúncios + orgânico
-  // + WhatsApp. Travado em 'hotmart' porque esta é a seção Efeito Lipo; a visão da
-  // marca toda (Hotmart + Greenn) fica no painel /painel.
-  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_gateway: 'hotmart' })
+  // Geral = TODAS as vendas do Efeito Lipo (sem filtro de funil): anúncios +
+  // orgânico + WhatsApp. Cobre os DOIS gateways do produto: Hotmart inteira
+  // (100% Efeito Lipo) + Greenn SÓ do funil do quiz (p_greenn_sck) — o teste A/B
+  // de checkout manda ~metade dos compradores pra Greenn. O recorte por sck é o
+  // que isola o Efeito Lipo da Comunidade recorrente (que também cai na Greenn).
+  // A visão da marca toda (todos os produtos) fica no painel /painel.
+  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_greenn_sck: 'efeito-lipo-quiz' })
   const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, itens_vendidos: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0
   const spend = n(d.spend), vendas = n(d.vendas_real), itens = n(d.itens_vendidos), receita = n(d.receita_real)
@@ -64,7 +67,7 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
   return (
     <DashboardShell active="geral">
       <h1 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>Geral</h1>
-      <p style={{ fontSize: 13.5, color: 'var(--sub)', marginBottom: 18 }}>Resultado completo: <strong>todas as vendas</strong> da Hotmart (anúncios + orgânico + WhatsApp + qualquer origem) contra o investimento total. É a verdade do caixa.</p>
+      <p style={{ fontSize: 13.5, color: 'var(--sub)', marginBottom: 18 }}>Resultado completo do <strong>Efeito Lipo</strong>: <strong>todas as vendas</strong> — Hotmart + Greenn (funil do quiz), anúncios + orgânico + WhatsApp + qualquer origem — contra o investimento total. É a verdade do caixa.</p>
 
       <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} />
 
@@ -76,7 +79,7 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
         <Card label="Faturamento" value={brl0(receita)} sub="bruto · todas as origens" accent="var(--g)" />
         <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="faturamento ÷ vendas" accent="var(--g)" />
         <Card label="Lucro por venda" value={vendas > 0 ? brl(lucroPorVenda) : '—'} sub="lucro líquido ÷ vendas" accent={lucroPorVenda >= 0 ? 'var(--g)' : '#c0392b'} />
-        <Card label="Líquido" value={brl0(liquido)} sub={`após taxas Hotmart${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
+        <Card label="Líquido" value={brl0(liquido)} sub={`após taxas dos gateways${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
         <Card label="Margem" value={receita > 0 ? pct1(liquido, receita) : '—'} sub="líquido ÷ bruto (sobra das taxas)" accent={receita > 0 ? (margem >= 0.8 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
         <Card label="Lucro" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
         <Card label="ROAS" value={receita > 0 ? roas.toFixed(2) + 'x' : '—'} sub="blended · bruto ÷ investido" accent={receita > 0 ? (roas >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
@@ -84,7 +87,7 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-        💡 Aqui entram <strong>todas as vendas</strong>, independentemente da origem (é o resultado real do negócio · ROAS blended). Pra ver só o que o funil do quiz converteu, use a aba <strong>Funil</strong>. <strong>Vendas da Hotmart</strong> são capturadas desde <strong>19/06</strong> — antes disso, faturamento/lucro parciais.
+        💡 Aqui entram <strong>todas as vendas do Efeito Lipo</strong>, independentemente da origem (é o resultado real do negócio · ROAS blended) — somando <strong>Hotmart + Greenn (funil do quiz)</strong>, já que o teste A/B de checkout manda parte dos compradores pra Greenn. A Comunidade recorrente (também na Greenn) fica de fora — ela aparece no painel <strong>/painel</strong>. Pra ver só o que o funil do quiz converteu, use a aba <strong>Funil</strong>. Vendas da <strong>Hotmart</strong> capturadas desde <strong>19/06</strong>; da <strong>Greenn</strong> desde <strong>25/06</strong> — antes disso, faturamento/lucro parciais.
       </div>
 
       {/* Dinheiro na mesa: reembolsos + aguardando pagamento + abandono */}
@@ -97,7 +100,7 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
           <Card label="Abandono de carrinho" value={int(abaQtd)} sub="carrinhos abandonados no checkout" accent="var(--o)" />
         </div>
         <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>
-          As <strong>vendas líquidas já descontam os reembolsos</strong> — o número reflete a realidade atual de cada compra. Reembolso = compra paga e devolvida. Aguardando = boleto/Pix gerado e ainda não pago. Abandono não traz valor pela Hotmart, por isso mostramos só a quantidade.
+          As <strong>vendas líquidas já descontam os reembolsos</strong> — o número reflete a realidade atual de cada compra. Reembolso = compra paga e devolvida. Aguardando = boleto/Pix gerado e ainda não pago. Abandono só é rastreado na Hotmart (a Greenn não manda esse evento) e não traz valor, por isso mostramos só a quantidade.
         </p>
       </section>
     </DashboardShell>

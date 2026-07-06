@@ -65,6 +65,11 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
   const receitaAds = N(canais.find((c) => c.canal === 'ads')?.receita)
   const roasAds = div(receitaAds, spend)
 
+  // ROAS TOTAL (blended): faturamento total da marca (todos os gateways, todas
+  // as origens) ÷ investimento total. Mede o retorno do negócio inteiro sobre o
+  // que foi investido — não só a fatia que veio de anúncio.
+  const roasTotal = div(receita, spend)
+
   // Famílias (junta gateways): agrega por familia
   const famMap = new Map<string, { vendas: number; receita: number; liquido: number }>()
   for (const p of produtos) {
@@ -94,11 +99,12 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
         <Card label="Lucro" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
         <Card label="ROAS de anúncios" value={spend > 0 ? roasAds.toFixed(2) + 'x' : '—'} sub="faturamento de ads ÷ investido" accent={spend > 0 ? (roasAds >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
+        <Card label="ROAS total" value={spend > 0 ? roasTotal.toFixed(2) + 'x' : '—'} sub="faturamento total ÷ investido (blended)" accent={spend > 0 ? (roasTotal >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
         <Card label="Reembolsos" value={int(reembolsos)} sub={`${reembValor > 0 ? brl0(reembValor) + ' · ' : ''}${pct1(reembolsos, vendas + reembolsos)} das vendas`} accent="#c0392b" />
       </div>
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-        💡 O <strong>ROAS de anúncios</strong> usa só o faturamento que veio de anúncio (não o total), pra não dividir o gasto do Meta por venda orgânica/comercial. Greenn capturada desde <strong>25/06</strong>; Hotmart desde 19/06.
+        💡 Dois olhares sobre o retorno: o <strong>ROAS de anúncios</strong> usa só o faturamento que veio de anúncio ÷ investido — mede a eficiência pura do tráfego pago. O <strong>ROAS total</strong> (blended) usa o faturamento total da marca ÷ investido — inclui orgânico, comercial e WhatsApp, mostrando o retorno do negócio inteiro sobre o que foi investido (costuma ser bem maior). Greenn capturada desde <strong>25/06</strong>; Hotmart desde 19/06.
       </div>
 
       {/* Por gateway */}

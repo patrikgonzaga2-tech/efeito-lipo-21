@@ -41,8 +41,11 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
   // Funil = só vendas que vieram de anúncio (têm src = id do anúncio). Exclui
-  // orgânico/sem-rastreio/WhatsApp. O gasto/funil do Meta continua completo.
-  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_only_ads: true, p_gateway: 'hotmart' })
+  // orgânico/sem-rastreio/WhatsApp. Cobre os dois gateways do Efeito Lipo:
+  // Hotmart inteira + Greenn SÓ do funil do quiz (p_greenn_sck) — o teste A/B de
+  // checkout manda ~metade das compras de anúncio pra Greenn. O gasto/funil do
+  // Meta continua completo.
+  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_only_ads: true, p_greenn_sck: 'efeito-lipo-quiz' })
   const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, itens_vendidos: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0
   const spend = n(d.spend), impr = n(d.impressions), clk = n(d.link_clicks), pv = n(d.lp_views)
@@ -64,7 +67,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
     { nome: 'Page views', valor: int(pv), taxa: pct1(pv, clk), custo: brl(div(spend, pv)) },
     { nome: 'Initiate checkout', valor: int(ic), taxa: pct1(ic, pv), custo: brl(div(spend, ic)) },
     { nome: 'Compras (pixel Meta)', valor: int(comprasMeta), taxa: pct1(comprasMeta, ic), custo: 'CPA ' + brl(div(spend, comprasMeta)) },
-    { nome: 'Pedidos de anúncio (Hotmart)', valor: int(vendas), taxa: comprasMeta > 0 ? pct1(vendas, comprasMeta) + ' do pixel' : '—', custo: 'CAC ' + brl(cac) },
+    { nome: 'Pedidos de anúncio (Hotmart + Greenn)', valor: int(vendas), taxa: comprasMeta > 0 ? pct1(vendas, comprasMeta) + ' do pixel' : '—', custo: 'CAC ' + brl(cac) },
   ]
 
   const td: React.CSSProperties = { padding: '12px 14px', fontSize: 14, color: 'var(--ink)' }
@@ -85,7 +88,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
         <Card label="Faturamento do funil" value={brl0(receita)} sub="bruto (com bumps)" accent="var(--g)" />
         <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="faturamento ÷ vendas" accent="var(--g)" />
         <Card label="Lucro por venda" value={vendas > 0 ? brl(lucroPorVenda) : '—'} sub="lucro líquido ÷ vendas" accent={lucroPorVenda >= 0 ? 'var(--g)' : '#c0392b'} />
-        <Card label="Líquido do funil" value={brl0(liquido)} sub={`após taxas Hotmart${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
+        <Card label="Líquido do funil" value={brl0(liquido)} sub={`após taxas dos gateways${receita > 0 ? ` · −${taxasPct}` : ''}`} accent="var(--g)" />
         <Card label="Margem" value={receita > 0 ? pct1(liquido, receita) : '—'} sub="líquido ÷ bruto" accent={receita > 0 ? (margem >= 0.8 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
         <Card label="Lucro do funil" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
         <Card label="ROAS do funil" value={receita > 0 ? roas.toFixed(2) + 'x' : '—'} sub="faturamento do funil ÷ investido" accent={receita > 0 ? (roas >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
@@ -93,7 +96,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-        💡 Estes números contam <strong>só as vendas que vieram de anúncio</strong> (com id do anúncio rastreado). Vendas orgânicas, de WhatsApp ou sem rastreio <strong>não entram aqui</strong> — aparecem na aba <strong>Geral</strong>. Por isso o ROAS aqui costuma ser menor que o geral (blended). <strong>Pedidos × faturamento:</strong> "pedidos" conta cada cliente uma vez; o faturamento soma todos os itens, <strong>inclusive os order bumps</strong> (que, mesmo perdendo o id no checkout, são recuperados pelo comprador na mesma janela de compra). <strong>Atenção:</strong> parte das vendas de anúncio antes de 20/06 perdeu o id no checkout (bug já corrigido) — então este número subconta o passado e fica mais fiel daqui pra frente.
+        💡 Estes números contam <strong>só as vendas que vieram de anúncio</strong> (com id do anúncio rastreado), somando os dois gateways do Efeito Lipo — <strong>Hotmart + Greenn (funil do quiz)</strong>. Vendas orgânicas, de WhatsApp ou sem rastreio <strong>não entram aqui</strong> — aparecem na aba <strong>Geral</strong>. Por isso o ROAS aqui costuma ser menor que o geral (blended). <strong>Pedidos × faturamento:</strong> "pedidos" conta cada cliente uma vez; o faturamento soma todos os itens, <strong>inclusive os order bumps</strong> (que, mesmo perdendo o id no checkout, são recuperados pelo comprador na mesma janela de compra). <strong>Atenção:</strong> parte das vendas de anúncio antes de 20/06 perdeu o id no checkout (bug já corrigido) — então este número subconta o passado e fica mais fiel daqui pra frente.
       </div>
 
       {/* Funil com taxas */}

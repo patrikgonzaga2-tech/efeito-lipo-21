@@ -119,9 +119,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // Números REAIS do Meta + vendas, pro mesmo período (pra comparar com o
   // rastreio próprio do quiz). funil_resumo soma o funil do Meta e as vendas.
+  // Vendas do Efeito Lipo nos dois gateways: Hotmart inteira + Greenn só do
+  // funil do quiz (p_greenn_sck) — isola da Comunidade recorrente, que também
+  // cai na Greenn. Mesmo recorte das abas Geral/Funil.
   type Resumo = { spend: number; lp_views: number; ic: number; purchases_meta: number; vendas_real: number }
   const untilForRpc = untilIso ?? new Date().toISOString()
-  const [resumo] = await sbRpc<Resumo>('funil_resumo', { p_since: sinceIso, p_until: untilForRpc })
+  const [resumo] = await sbRpc<Resumo>('funil_resumo', { p_since: sinceIso, p_until: untilForRpc, p_greenn_sck: 'efeito-lipo-quiz' })
   const realPV = Number(resumo?.lp_views) || 0
   const realIC = Number(resumo?.ic) || 0
   const realCompras = Number(resumo?.purchases_meta) || 0
@@ -232,7 +235,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <Card label="Inícios" value={String(starts)} sub={`${pct(starts, realPV)}% das visualizações`} accent="var(--gd)" />
         <Card label="Initiate checkout" value={String(realIC)} sub={`${pct(realIC, realPV)}% das visualizações`} accent="var(--gd)" />
         <Card label="Compras" value={String(realCompras)} sub={`${pct(realCompras, realIC)}% dos checkouts · pixel`} accent="var(--o)" />
-        <Card label="Vendas" value={String(realVendas)} sub="reais (Hotmart) · desde 19/06" accent="var(--g)" />
+        <Card label="Vendas" value={String(realVendas)} sub="reais · Hotmart + Greenn (funil)" accent="var(--g)" />
       </div>
 
       <Section title="Teste A/B — 1ª tela">
