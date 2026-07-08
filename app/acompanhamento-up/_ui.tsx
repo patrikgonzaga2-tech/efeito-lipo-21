@@ -14,9 +14,30 @@ function track(event: string, extra: Record<string, unknown> = {}) {
   w.dataLayer.push({ event, ...extra })
 }
 
-// Visualização da página, uma única vez.
+// Visualização da página, uma única vez: dispara o evento no GTM E grava a
+// visualização no Supabase (beacon /api/upsell) — é a etapa "foram pra página
+// de upsell" do funil pós-compra no dashboard. id de sessão insert-ignore, então
+// recargas não recontam.
+const VIEW_ID_KEY = 'acompanhamento_up_vid'
 export function Pageview() {
-  useEffect(() => { track('acompanhamento_up_pageview') }, [])
+  useEffect(() => {
+    track('acompanhamento_up_pageview')
+    try {
+      let vid = sessionStorage.getItem(VIEW_ID_KEY)
+      if (!vid) {
+        vid = crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+        sessionStorage.setItem(VIEW_ID_KEY, vid)
+      }
+      const q = new URLSearchParams(window.location.search)
+      const xcod = q.get('xcod') || q.get('utm_content') || undefined
+      fetch('/api/upsell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({ id: vid, slug: 'acompanhamento-up', xcod }),
+      }).catch(() => { /* beacon best-effort */ })
+    } catch { /* ignore */ }
+  }, [])
   return null
 }
 

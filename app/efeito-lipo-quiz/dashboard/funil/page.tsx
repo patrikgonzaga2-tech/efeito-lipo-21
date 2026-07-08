@@ -16,6 +16,11 @@ type Resumo = {
   abandono_qtd: number
 }
 
+// Continuação do funil: upsell one-click pós-compra (/acompanhamento-up). Isolado
+// pela OFERTA; base = compradores do principal na Greenn (quem vê o upsell).
+const UPSELL_OFFER = '8QUFs9', MAIN_PRODUCT = '181143', UPSELL_SLUG = 'acompanhamento-up'
+type UpsellResumo = { vendas: number; base: number; views: number; receita: number; liquido: number }
+
 const brl = (n: number) => 'R$ ' + (Math.round(n * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })
 const brl0 = (n: number) => 'R$ ' + Math.round(n).toLocaleString('pt-BR')
 const int = (n: number) => Math.round(n).toLocaleString('pt-BR')
@@ -45,7 +50,10 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   // Hotmart inteira + Greenn SÓ do funil do quiz (p_greenn_sck) — o teste A/B de
   // checkout manda ~metade das compras de anúncio pra Greenn. O gasto/funil do
   // Meta continua completo.
-  const [r] = await sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_only_ads: true, p_greenn_sck: 'efeito-lipo-quiz' })
+  const [[r], [u]] = await Promise.all([
+    sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_only_ads: true, p_greenn_sck: 'efeito-lipo-quiz' }),
+    sbRpc<UpsellResumo>('upsell_resumo', { p_since: since, p_until: until, p_upsell_offer: UPSELL_OFFER, p_main_product: MAIN_PRODUCT, p_slug: UPSELL_SLUG }),
+  ])
   const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, itens_vendidos: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0
   const spend = n(d.spend), impr = n(d.impressions), clk = n(d.link_clicks), pv = n(d.lp_views)
@@ -68,6 +76,15 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
     { nome: 'Initiate checkout', valor: int(ic), taxa: pct1(ic, pv), custo: brl(div(spend, ic)) },
     { nome: 'Compras (pixel Meta)', valor: int(comprasMeta), taxa: pct1(comprasMeta, ic), custo: 'CPA ' + brl(div(spend, comprasMeta)) },
     { nome: 'Pedidos de anúncio (Hotmart + Greenn)', valor: int(vendas), taxa: comprasMeta > 0 ? pct1(vendas, comprasMeta) + ' do pixel' : '—', custo: 'CAC ' + brl(cac) },
+  ]
+
+  // Continuação pós-compra: compraram o principal → viram o upsell → compraram.
+  const ud: UpsellResumo = u ?? { vendas: 0, base: 0, views: 0, receita: 0, liquido: 0 }
+  const upBase = n(ud.base), upViews = n(ud.views), upVendas = n(ud.vendas), upReceita = n(ud.receita)
+  const upEtapas: { nome: string; valor: string; taxa: string }[] = [
+    { nome: 'Compraram o Efeito Lipo', valor: int(upBase), taxa: '—' },
+    { nome: 'Foram pra página de upsell', valor: int(upViews), taxa: pct1(upViews, upBase) },
+    { nome: 'Compraram o upsell', valor: int(upVendas), taxa: pct1(upVendas, upViews) },
   ]
 
   const td: React.CSSProperties = { padding: '12px 14px', fontSize: 14, color: 'var(--ink)' }
@@ -125,6 +142,39 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
           </table>
         </div>
         <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>Conversão = % que passou da etapa anterior. Custo = investimento ÷ eventos da etapa. A última linha conta <strong>pedidos únicos</strong> de anúncio (order bumps do mesmo checkout não recontam; o faturamento, esse sim, soma os bumps).</p>
+      </section>
+
+      {/* Continuação: o upsell pós-compra */}
+      <section className="mt-9">
+        <h2 className="font-display" style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>Depois da compra: o upsell</h2>
+        <p style={{ fontSize: 12.5, color: 'var(--sub)', marginBottom: 14 }}>Quem comprou o Efeito Lipo na Greenn é levado pra <strong>/acompanhamento-up</strong> (Comunidade Trimestral, 1 clique, R$147). Aqui: quantos <strong>viram</strong> a página e quantos <strong>compraram</strong> o upsell.</p>
+        <div className="rounded-2xl overflow-x-auto" style={{ background: '#fff', border: '1px solid rgba(0,0,0,.07)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(0,0,0,.08)' }}>
+                <th style={{ ...td, textAlign: 'left', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mute)' }}>Etapa</th>
+                <th style={{ ...tdR, fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mute)' }}>Pessoas</th>
+                <th style={{ ...tdR, fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mute)' }}>Conversão</th>
+              </tr>
+            </thead>
+            <tbody>
+              {upEtapas.map((e, i) => (
+                <tr key={e.nome} style={{ borderTop: i ? '1px solid rgba(0,0,0,.05)' : 'none', background: i === upEtapas.length - 1 ? 'rgba(0,114,38,.05)' : '#fff' }}>
+                  <td style={{ ...td, fontWeight: 700 }}>{e.nome}</td>
+                  <td style={{ ...tdR, fontWeight: 800, fontSize: 16 }} className="font-display">{e.valor}</td>
+                  <td style={{ ...tdR, color: 'var(--sub)' }}>{e.taxa}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid gap-4 mt-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+          <Card label="Take rate do upsell" value={upBase > 0 ? pct1(upVendas, upBase) : '—'} sub="compraram o upsell ÷ compraram o Efeito Lipo" accent={upBase > 0 ? (div(upVendas, upBase) >= 0.1 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
+          <Card label="Receita do upsell" value={brl0(upReceita)} sub="faturamento bruto (R$147 cada)" accent="var(--g)" />
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>
+          Diferente do funil acima (só anúncio), esta etapa conta <strong>todos os compradores do Efeito Lipo na Greenn</strong> — o upsell é mostrado a todos eles, não só aos que vieram de anúncio. Detalhes e reembolsos na aba <strong>Upsell</strong>. Se as <strong>visualizações</strong> ficarem bem abaixo das compras, o redirect pós-compra da Greenn pra <strong>/acompanhamento-up</strong> pode não estar configurado.
+        </p>
       </section>
     </DashboardShell>
   )

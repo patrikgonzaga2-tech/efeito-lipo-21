@@ -16,6 +16,7 @@ const GROUPS: { label: string; tabs: { key: string; label: string; href: string 
       { key: 'utm', label: 'Origem (UTM)', href: `${BASE}/utm` },
       { key: 'produtos', label: 'Produtos', href: `${BASE}/produtos` },
       { key: 'gateways', label: 'Gateways', href: `${BASE}/gateways` },
+      { key: 'upsell', label: 'Upsell', href: `${BASE}/upsell` },
     ],
   },
 ]
