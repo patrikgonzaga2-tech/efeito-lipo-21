@@ -654,7 +654,7 @@ function Sales({ perfil, onCheckout }: { perfil: InnerProps['perfil']; onCheckou
         </div>
         <Price />
         <div className="mt-6"><a href={href} onClick={onBuy} target="_blank" rel="noopener noreferrer" className="block"><CtaButton full glow dataLabel="preco">Quero meu protocolo agora</CtaButton></a></div>
-        <p className="text-center" style={{ fontSize: 12, color: 'var(--mute)', marginTop: 12, lineHeight: 1.6 }}>🔒 Pagamento 100% seguro via Hotmart · Acesso imediato · Pix ou cartão</p>
+        <p className="text-center" style={{ fontSize: 12, color: 'var(--mute)', marginTop: 12, lineHeight: 1.6 }}>🔒 Pagamento 100% seguro · Acesso imediato · Pix ou cartão</p>
 
         {/* Garantia */}
         <div className="mt-9 rounded-2xl p-6 text-center" style={{ background: 'rgba(28,135,60,.06)', border: '1px solid rgba(28,135,60,.15)' }}>

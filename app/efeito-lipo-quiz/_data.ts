@@ -90,7 +90,7 @@ export function readXcod(): string | null {
 // navegador — recargas e cliques repetidos caem sempre no mesmo checkout.
 export const CHECKOUT_AB = {
   enabled: true,
-  greennShare: 0.5,
+  greennShare: 1,
 }
 export const CHECKOUT_AB_KEY = 'el_checkout_ab'
 export type CheckoutArm = 'hotmart' | 'greenn'
