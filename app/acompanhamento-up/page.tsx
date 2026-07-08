@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import type { CSSProperties, ReactNode } from 'react'
+import Image from 'next/image'
 import { Pageview, Reveal, CountdownPill, CheckoutCta } from './_ui'
 
 export const metadata: Metadata = {
@@ -148,6 +149,27 @@ function PillarCard({ title, desc }: { title: string; desc: string }) {
       }}>{title}</h4>
       <p style={{ fontSize: 'clamp(14px,3.6vw,15px)', lineHeight: 1.5, color: MUTE, margin: '7px 0 0' }}>{desc}</p>
     </div>
+  )
+}
+
+// Retrato da Laura — moldura arredondada, hairline e sombra suave. Traz o
+// toque pessoal ("eu vou ser a sua personal") sem quebrar o clima clean.
+function LauraPhoto({
+  src, alt, w, h, maxW = 360, priority = false,
+}: { src: string; alt: string; w: number; h: number; maxW?: number; priority?: boolean }) {
+  return (
+    <figure style={{ margin: 'clamp(28px,5.5vw,38px) auto 0', maxWidth: maxW, width: '100%' }}>
+      <div style={{
+        borderRadius: 22, overflow: 'hidden', lineHeight: 0,
+        border: `1px solid ${CARD_LINE}`, boxShadow: '0 28px 66px rgba(0,0,0,.55)',
+      }}>
+        <Image
+          src={src} alt={alt} width={w} height={h} priority={priority}
+          sizes="(max-width: 560px) 88vw, 360px"
+          style={{ width: '100%', height: 'auto', display: 'block' }}
+        />
+      </div>
+    </figure>
   )
 }
 
@@ -307,6 +329,11 @@ export default function Page() {
         <Section bg={RAISED} py={72}>
           <Kick color={G_TEXT} />
           <h2 style={H2}>Nos próximos dias, eu vou ser a sua personal.</h2>
+          <LauraPhoto
+            src="/images/Foto-Laura-Barriga-hero.png"
+            alt="Laura Rosa treinando em casa"
+            w={1080} h={1320}
+          />
           <p style={{ ...BODY, textAlign: 'center', maxWidth: 560, margin: 'clamp(22px,4.5vw,28px) auto 0' }}>
             Durante todo o seu desafio, eu vou estar com você de verdade:
           </p>
@@ -533,7 +560,12 @@ export default function Page() {
 
         {/* ━━ SEÇÃO 10 — FECHAMENTO EMOCIONAL ━━ */}
         <Section bg={BASE} py={64}>
-          <div style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <LauraPhoto
+            src="/images/Laura-Arrumada-hero.jpg"
+            alt="Laura Rosa"
+            w={1984} h={2976} maxW={320}
+          />
+          <div style={{ maxWidth: 560, margin: 'clamp(28px,5.5vw,36px) auto 0', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <p style={BODY}>Vou ser sincera com você.</p>
             <p style={BODY}>
               Você pode fazer esses 21 dias sozinha, torcendo pra não desistir no
