@@ -94,24 +94,38 @@ export function CountdownPill({
   )
 }
 
-// ── CTA de checkout ──────────────────────────────────────────────────────────
-// TODO: trocar CHECKOUT_HREF pelo link real do checkout (R$147). Enquanto for
-// '#', o botão não leva a lugar nenhum — Vinicius vai passar o link.
-const CHECKOUT_HREF = '#'
+// ── CTA de checkout — Greenn One-Click Buy ───────────────────────────────────
+// Botão de compra em 1 clique da Greenn. O comportamento (a cobrança no cartão
+// que a cliente já usou no Efeito Lipo) é injetado pelo "Modal de Compra" da
+// Greenn — ver o <Script> em page.tsx —, que define a função global
+// startLoading() e processa os atributos data-greenn-*. Aqui só marcamos o
+// botão com o ID da oferta e disparamos startLoading no clique; o design (pill
+// verde) e a copy continuam nossos.
+//
+// IMPORTANTE: o one-click só cobra se a página for aberta pelo redirect da
+// Greenn após a compra (é assim que ela reconhece a sessão/cartão da cliente).
+const GREENN_UPSELL_ID = '6097'
 
 export function CheckoutCta({ children, label }: { children: ReactNode; label: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-      <a
-        href={CHECKOUT_HREF}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => track('acompanhamento_up_cta_click', { local: label })}
+      <button
+        type="button"
+        data-greenn-one-click="false"
+        data-greenn-upsell={GREENN_UPSELL_ID}
+        data-greenn-split="1"
+        data-loading="false"
         data-cta={label}
-        aria-label="Começar acompanhada — ir para o checkout"
+        onClick={(e) => {
+          track('acompanhamento_up_cta_click', { local: label })
+          // dispara o fluxo de cobrança em 1 clique da Greenn, se o modal já carregou
+          const w = window as unknown as { startLoading?: (el: HTMLElement) => void }
+          w.startLoading?.(e.currentTarget)
+        }}
+        aria-label="Comprar em 1 clique — acompanhamento com a Laüra"
         className="font-display inline-flex items-center justify-center gap-2 font-bold rounded-full transition-all duration-300 active:scale-[.97] hover:-translate-y-0.5"
         style={{
-          width: '100%', maxWidth: 460,
+          width: '100%', maxWidth: 460, border: 'none', cursor: 'pointer',
           padding: 'clamp(17px,2.6vw,20px) clamp(26px,5vw,40px)',
           fontSize: 'clamp(15.5px,2.2vw,18px)', lineHeight: 1.2,
           textAlign: 'center', color: '#04300F',
@@ -121,7 +135,7 @@ export function CheckoutCta({ children, label }: { children: ReactNode; label: s
       >
         {children}
         <span aria-hidden style={{ fontSize: '1.05em' }}>→</span>
-      </a>
+      </button>
     </div>
   )
 }

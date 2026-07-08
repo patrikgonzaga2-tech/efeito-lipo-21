@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import type { CSSProperties, ReactNode } from 'react'
 import Image from 'next/image'
+import Script from 'next/script'
 import { Pageview, Reveal, CountdownPill, CheckoutCta } from './_ui'
 
 export const metadata: Metadata = {
@@ -9,6 +10,39 @@ export const metadata: Metadata = {
     'Você acabou de entrar no Efeito Lipo. Faça os seus 21 dias com a Laüra do seu lado, mais 60 dias de bônus e o app completo — condição especial só nesta página.',
   robots: { index: false, follow: false },
 }
+
+// ── Greenn One-Click — "Modal de Compra" ────────────────────────────────────
+// Código fornecido pela Greenn (painel do upsell). Faz duas coisas: define a
+// função global startLoading() (só o spinner de feedback no botão) e injeta o
+// motor da cobrança em 1 clique (payfast.greenn.com.br/assets/upsell.js), que
+// varre a página pelos botões [data-greenn-upsell] e processa a compra usando a
+// sessão da cliente vinda do redirect pós-compra da Greenn. As crases internas
+// (do SVG do spinner) estão escapadas (\`) por estar dentro de um template.
+const GREENN_UPSELL_MODAL = `
+window.startLoading = function(button) {
+  const originalHTML = button.innerHTML;
+  button.setAttribute('data-loading', 'true');
+  button.innerHTML = \`
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+      <path fill="#ffffff" d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25"/>
+      <path fill="#ffffff" d="M12,4a8,8,0,0,1,7.89,6.7A1.53,1.53,0,0,0,21.38,12h0a1.5,1.5,0,0,0,1.48-1.75,11,11,0,0,0-21.72,0A1.5,1.5,0,0,0,2.62,12h0a1.53,1.53,0,0,0,1.49-1.3A8,8,0,0,1,12,4Z">
+        <animateTransform attributeName="transform" dur="0.75s" repeatCount="indefinite" type="rotate" values="0 12 12;360 12 12"/>
+      </path>
+    </svg>\`;
+  setTimeout(() => {
+    button.setAttribute('data-loading', 'false');
+    button.innerHTML = originalHTML;
+  }, 3000);
+};
+(function (w, d, s, t) {
+  if (w._greennUp) return;
+  w._greennUp = t;
+  var f = d.getElementsByTagName(s)[0], j = d.createElement(s);
+  j.async = true;
+  j.src = "https://payfast.greenn.com.br/assets/upsell.js?v=" + t;
+  f.parentNode.insertBefore(j, f);
+})(window, document, "script", Date.now());
+`
 
 /* ══════════════════════════════════════════════════════════════════════════
    DESIGN SYSTEM — upsell escuro premium
@@ -181,6 +215,13 @@ export default function Page() {
       {/* Sem JS, o reveal ficaria invisível — garante conteúdo visível. */}
       <noscript><style>{`.reveal{opacity:1 !important;transform:none !important}`}</style></noscript>
 
+      {/* Greenn One-Click — Modal de Compra (define startLoading + injeta
+          upsell.js). afterInteractive: carrega assim que a página fica
+          interativa; os botões [data-greenn-upsell] já estão no HTML. */}
+      <Script id="greenn-upsell-modal" strategy="afterInteractive">
+        {GREENN_UPSELL_MODAL}
+      </Script>
+
       <main style={{ background: BASE, color: INK, overflowX: 'hidden' }}>
 
         {/* ━━ SEÇÃO 1 — HERO ━━ */}
@@ -228,8 +269,8 @@ export default function Page() {
               fontSize: 'clamp(18px,4.8vw,20px)', lineHeight: 1.4,
               color: INK, margin: '24px auto 0', maxWidth: 580,
             }}>
-              Porque tem uma diferença entre a mulher que seca e volta pro ponto de
-              partida e a que <span style={{ color: O_TEXT }}>seca e permanece</span>.
+              Porque tem uma diferença entre a mulher que emagrece e volta pro ponto
+              de partida e a que <span style={{ color: O_TEXT }}>emagrece e se mantém magra</span>.
               E não tem nada a ver com força de vontade.
             </p>
           </div>
@@ -307,8 +348,8 @@ export default function Page() {
                 promessa que você fez sozinha no espelho, e passa a ser sair do time.
               </p>
               <p style={BODY}>
-                É por isso que quem leva a sério tem um personal. A técnica é a menor
-                parte. O que vale é ter alguém ali todo dia criando o compromisso:
+                É por isso que quem leva a sério tem um personal. Os treinos a seguir
+                são a menor parte. O que vale é ter alguém ali todo dia criando o compromisso:
                 cobrando com cuidado, te dizendo o próximo passo e não deixando você
                 sumir quando bate a preguiça.
               </p>
@@ -386,7 +427,7 @@ export default function Page() {
               </p>
             </Read>
           </div>
-          <Beat tone="g">Eu acelero o seu resultado agora e fico pra proteger ele depois.</Beat>
+          <Beat tone="g">Eu acelero o seu resultado agora e fico com você pra garantir que você não recupere tudo depois.</Beat>
         </Section>
 
         {/* ━━ SEÇÃO 5 — A OFERTA (value stack) ━━ */}
@@ -396,9 +437,9 @@ export default function Page() {
           <div style={{ maxWidth: 600, margin: 'clamp(26px,5vw,34px) auto 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <CheckRow lead="Acompanhamento direto comigo durante todo o desafio" tail="eu com você pra acelerar o resultado" />
             <CheckRow lead="+ 2 meses de acompanhamento de bônus, de graça" tail="quando o desafio acaba, eu fico mais 60 dias pra proteger o que você conquistou" />
-            <CheckRow lead="Meu WhatsApp direto" tail="te ajudo no dia a dia pra você não desistir e chegar no resultado que eu te prometi" />
+            <CheckRow lead="Suporte diário" tail="te ajudo no dia a dia pra você não desistir e chegar no resultado que eu te prometi" />
             <CheckRow lead="Bônus especial: acesso completo ao app da Comunidade Corpo Feliz" tail="todos os meus produtos lá dentro (mais de R$1.000 em conteúdo)" />
-            <CheckRow lead="Grupo da Comunidade no WhatsApp" tail="você não caminha sozinha, está entre mulheres fazendo o mesmo que você" />
+            <CheckRow lead="Grupo da Comunidade" tail="você não caminha sozinha, está entre mulheres fazendo o mesmo que você" />
           </div>
 
           {/* Sub-bloco — os 4 pilares do método */}
@@ -427,11 +468,10 @@ export default function Page() {
             {/* Mini-lista do que ela acessa */}
             <div style={{ marginTop: 'clamp(20px,4vw,26px)', display: 'flex', flexDirection: 'column', gap: 11 }}>
               {[
-                'Avaliação de entrada que monta a sua trilha, não a padrão',
                 '4 níveis do iniciante ao avançado, com o próximo passo sempre claro',
                 'Treinos novos todo mês, ajustados pra fase do ciclo',
                 'Treinos de 3 e 5 minutos pros dias impossíveis',
-                'Planos alimentares por fase do mês, sem restrição extrema',
+                'Plano alimentar calculado para o seu objetivo atual, sem restrições e com flexibilidade nos alimentos',
               ].map((t) => (
                 <div key={t} style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
                   <span aria-hidden style={{ color: O_TEXT, fontSize: 14, lineHeight: 1.5, flexShrink: 0 }}>✦</span>
@@ -469,8 +509,8 @@ export default function Page() {
               leva o acompanhamento inteiro, os 2 meses de bônus e o app completo.
             </p>
             <p style={{ fontSize: 'clamp(14px,3.6vw,15px)', lineHeight: 1.55, color: MUTE, margin: '16px auto 0', maxWidth: 420 }}>
-              Assim que confirmar, seu acesso ao grupo e ao app cai na hora, e eu já
-              começo com você.
+              Assim que garantir essa condição, você já recebe imediatamente todo
+              acesso ao conteúdo do aplicativo, grupo e já iniciamos nossa jornada juntinhas.
             </p>
             <div style={{ marginTop: 'clamp(26px,5vw,34px)' }}>
               <CheckoutCta label="preco">QUERO ESSA CONDIÇÃO</CheckoutCta>
@@ -493,7 +533,7 @@ export default function Page() {
               <span aria-hidden>🛡️</span> Garantia de 21 dias
             </div>
             <h2 style={{ ...H2, maxWidth: 560 }}>
-              Você pode testar justo os dias que mais importam, sem risco.
+              Você pode testar os 21 dias que mais importam, sem risco.
             </h2>
             <div style={{ maxWidth: 560, margin: '24px auto 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <p style={{ ...BODY, textAlign: 'center' }}>
@@ -502,7 +542,7 @@ export default function Page() {
               </p>
               <p style={{ ...BODY, textAlign: 'center' }}>
                 Se ao fim dos 21 dias você sentir que fazer acompanhada não mudou nada
-                pra você, é só me falar e eu devolvo cada centavo. O risco é todo meu.
+                pra você, é só conversar comigo e eu devolvo cada centavo. O risco é todo meu.
               </p>
             </div>
           </div>
@@ -518,15 +558,16 @@ export default function Page() {
             <h2 style={{ ...H2, maxWidth: 520 }}>Essa condição é só agora, e é só aqui.</h2>
             <div style={{ maxWidth: 520, margin: '22px auto 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <p style={{ ...BODY, textAlign: 'center' }}>
-                Eu só consigo abrir os R$147 com tudo isso pra quem acabou de entrar
-                no Efeito Lipo, neste momento, nesta página.
+                Eu só consigo deixar pelo valor de R$147,00 com tudo isso disponível,
+                porque você acabou de entrar para o Efeito Lipo. É meu presente e
+                retribuição à sua confiança em meu trabalho.
               </p>
               <p style={{ ...BODY, textAlign: 'center', color: INK, fontWeight: 600 }}>
-                Se você sair daqui, essa condição não volta.
+                Mas é válido somente agora e aqui nesta página.
               </p>
             </div>
             <div style={{ marginTop: 'clamp(28px,5.5vw,36px)' }}>
-              <CheckoutCta label="urgencia">SIM, QUERO COMEÇAR ACOMPANHADA</CheckoutCta>
+              <CheckoutCta label="urgencia">Sim, quero a profe Laüra comigo</CheckoutCta>
               <p style={{ fontSize: 13, lineHeight: 1.55, color: MUTE, margin: '16px auto 0', maxWidth: 400 }}>
                 🔒 Pagamento único de R$147 · Acesso imediato · Garantia de 21 dias
               </p>
@@ -578,7 +619,7 @@ export default function Page() {
             }}>
               Eu sei o que eu escolheria pra mim. E acho que você também sabe.
               <br />
-              Vem comigo. Eu te espero do outro lado.
+              Vem comigo. Te espero na jornada juntinhas.
             </p>
           </div>
           <div style={{ marginTop: 'clamp(28px,6vw,40px)' }}>
