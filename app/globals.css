@@ -211,3 +211,29 @@ a {
   .q-in, .q-pop, .q-check, .q-glow, .q-floaty, .q-confetti-piece { animation: none !important; }
   .q-in { opacity: 1; transform: none; }
 }
+
+/* ──────────────────────────────────────────────
+   UPSELL /acompanhamento-up — strip de 3 mini-cards
+   Mobile: 2 colunas + 3º card centralizado sozinho na 2ª linha (mesma
+   largura de uma coluna). Desktop (≥640px): 3 colunas lado a lado.
+   ────────────────────────────────────────────── */
+.mini-strip {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+}
+/* Card órfão (último, em posição ímpar): ocupa a linha e centraliza,
+   mantendo a largura de uma única coluna. */
+.mini-strip > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: calc(50% - 6px);
+}
+@media (min-width: 640px) {
+  .mini-strip { grid-template-columns: repeat(3, 1fr); }
+  .mini-strip > :last-child:nth-child(odd) {
+    grid-column: auto;
+    justify-self: stretch;
+    width: auto;
+  }
+}
