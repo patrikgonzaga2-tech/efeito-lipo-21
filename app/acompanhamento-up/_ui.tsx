@@ -41,6 +41,95 @@ export function Pageview() {
   return null
 }
 
+// ── Player de vídeo (VTurb / ConverteAI) ─────────────────────────────────────
+// Lazy: o player (web component pesado, ~7 MB) só carrega quando a cliente
+// clica no play — a página abre leve. Enquanto isso mostramos um pôster escuro
+// com botão de play (mesmo padrão da /efeito-lipo).
+//  1) no clique, injetamos o script v4/player.js uma única vez (guard por id);
+//  2) renderizamos a tag do player + placeholder via innerHTML — React não
+//     conhece elementos customizados, então dangerouslySetInnerHTML é o caminho
+//     limpo. O padding-top de 55.74% mantém o aspect ratio (~16:9).
+const VTURB_PLAYER_ID = 'vid-6a51640fed97cc5fbffc0288'
+const VTURB_SCRIPT_ID = 'vturb-6a51640fed97cc5fbffc0288'
+const VTURB_SRC =
+  'https://scripts.converteai.net/9406f62d-bd68-44a6-971a-c0a91bdff3c8/players/6a51640fed97cc5fbffc0288/v4/player.js'
+
+export function VturbPlayer() {
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    if (!loaded) return
+    if (document.getElementById(VTURB_SCRIPT_ID)) return
+    const s = document.createElement('script')
+    s.id = VTURB_SCRIPT_ID
+    s.src = VTURB_SRC
+    s.async = true
+    document.head.appendChild(s)
+  }, [loaded])
+
+  return (
+    <div
+      style={{
+        position: 'relative', maxWidth: 560, width: '100%',
+        margin: 'clamp(28px,5.5vw,36px) auto 0',
+        borderRadius: 20, overflow: 'hidden', lineHeight: 0,
+        border: '1px solid rgba(255,255,255,.09)',
+        boxShadow: '0 28px 66px rgba(0,0,0,.55)',
+        background: '#000',
+        ...(loaded ? {} : { aspectRatio: '16 / 9' }),
+      }}
+    >
+      {loaded ? (
+        <div
+          style={{ width: '100%' }}
+          dangerouslySetInnerHTML={{
+            __html:
+              `<vturb-smartplayer id="${VTURB_PLAYER_ID}" style="display:block;margin:0 auto;width:100%;">` +
+              `<div class="vturb-player-placeholder" style="position:relative;width:100%;padding:55.74074074074075% 0 0;z-index:0;background-color:black;"></div>` +
+              `</vturb-smartplayer>`,
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setLoaded(true)}
+          aria-label="Assistir ao vídeo do comunicado"
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', gap: 18, cursor: 'pointer',
+            border: 0, padding: 0,
+            background: 'radial-gradient(60% 60% at 50% 45%, rgba(245,113,0,.16), transparent 70%), #100E0C',
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              display: 'grid', placeItems: 'center',
+              width: 'clamp(64px,11vw,88px)', height: 'clamp(64px,11vw,88px)',
+              borderRadius: '50%', background: 'var(--o)',
+              boxShadow: '0 8px 32px rgba(245,113,0,.5)',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="#000" width="38%" height="38%" style={{ marginLeft: '8%' }}>
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+          <span
+            className="font-display"
+            style={{
+              color: '#fff', fontSize: 'clamp(13px,3.4vw,15px)',
+              letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 700,
+              textShadow: '0 2px 8px rgba(0,0,0,.6)', lineHeight: 1,
+            }}
+          >
+            Assista agora
+          </span>
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── Reveal on-scroll ────────────────────────────────────────────────────────
 // Envolve um bloco e o revela quando entra na viewport. A transição (e o
 // respeito a prefers-reduced-motion) vem das classes .reveal/.show do

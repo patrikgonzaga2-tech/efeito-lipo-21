@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import type { CSSProperties, ReactNode } from 'react'
 import Image from 'next/image'
 import Script from 'next/script'
-import { Pageview, Reveal, CountdownPill, CheckoutCta } from './_ui'
+import { Pageview, Reveal, CountdownPill, CheckoutCta, VturbPlayer } from './_ui'
 
 export const metadata: Metadata = {
   title: 'Comece acompanhada — Comunidade Corpo Feliz · Laüra Rosa',
@@ -256,23 +256,11 @@ export default function Page() {
               fontSize: 'clamp(16px,4.4vw,18px)', lineHeight: 1.55,
               color: SUB, margin: '16px auto 0', maxWidth: 560,
             }}>
-              Antes de você começar seus 21 dias, leia este comunicado até o fim.
-              É ele que decide se dessa vez o seu resultado vem rápido e fica — ou
+              Antes de você começar seus 21 dias, assista este vídeo até o fim.
+              É ele que decide se dessa vez o seu resultado vem rápido e fica ou
               vira só mais uma tentativa de emagrecer.
             </p>
-            <p style={{ fontSize: 'clamp(15px,3.9vw,16px)', lineHeight: 1.55, color: MUTE, margin: '24px auto 0', maxWidth: 520 }}>
-              Seu acesso já está sendo liberado. O que vem agora é uma decisão que
-              só dá pra tomar aqui, neste momento.
-            </p>
-            <p style={{
-              fontFamily: 'var(--font-display)', fontWeight: 700,
-              fontSize: 'clamp(18px,4.8vw,20px)', lineHeight: 1.4,
-              color: INK, margin: '24px auto 0', maxWidth: 580,
-            }}>
-              Porque tem uma diferença entre a mulher que emagrece e volta pro ponto
-              de partida e a que <span style={{ color: O_TEXT }}>emagrece e se mantém magra</span>.
-              E não tem nada a ver com força de vontade.
-            </p>
+            <VturbPlayer />
           </div>
         </section>
 
