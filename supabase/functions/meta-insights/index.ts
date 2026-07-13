@@ -13,6 +13,11 @@
 // Re-busca uma janela dos últimos dias a cada execução (o Meta ajusta números
 // retroativamente). ?days=N controla a janela (padrão 4; use grande p/ backfill).
 //
+// ORÇAMENTO DE TEMPO: a Edge Function é morta pelo Supabase aos 150s. A lista de
+// ids rastreados só cresce, então as chamadas ao Meta rodam em PARALELO (pool) e
+// os lotes são gravados ENQUANTO avançam — nunca "tudo no fim". Se o tempo apertar,
+// paramos cedo e gravamos o que já veio (o próximo run completa o resto).
+//
 // Segredos: META_ACCESS_TOKEN (ads_read), META_AD_ACCOUNT_ID (não usado aqui,
 // mas mantido p/ referência). SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY do ambiente.
 // ════════════════════════════════════════════════════════════════════
@@ -21,6 +26,11 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const META_TOKEN = (Deno.env.get('META_ACCESS_TOKEN') ?? '').trim()
 const API = 'https://graph.facebook.com/v25.0'
+
+// Quantos conjuntos processamos ao mesmo tempo, e quando desistimos de começar
+// um novo (deixando folga para gravar o que já foi coletado antes dos 150s).
+const CONCURRENCY = 10
+const TIME_BUDGET_MS = 110_000
 
 function spDate(offsetDays = 0): string {
   const d = new Date(Date.now() - offsetDays * 86400000)
@@ -33,10 +43,26 @@ const sbHeaders = {
   'Content-Type': 'application/json',
 }
 
+// Upsert com merge por chave. Devolve o erro (texto) ou null.
+async function upsert(table: string, onConflict: string, body: Record<string, unknown>[]): Promise<string | null> {
+  if (body.length === 0) return null
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
+      method: 'POST',
+      headers: { ...sbHeaders, Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(body),
+    })
+    return res.ok ? null : await res.text()
+  } catch (e) {
+    return String(e)
+  }
+}
+
 Deno.serve(async (req) => {
   if (!META_TOKEN) {
     return Response.json({ ok: false, error: 'falta META_ACCESS_TOKEN' }, { status: 500 })
   }
+  const t0 = Date.now()
   const days = Math.min(Math.max(Number(new URL(req.url).searchParams.get('days')) || 4, 1), 400)
   const since = spDate(days - 1)
   const until = spDate(0)
@@ -68,9 +94,33 @@ Deno.serve(async (req) => {
   const adRows: Record<string, unknown>[] = []    // nível anúncio → meta_ads
   const statusRows: Record<string, unknown>[] = [] // ativo/pausado → meta_status
   const erros: { ad_id: string; error: unknown }[] = []
+  const falhasGravacao: string[] = []
   const nowIso = new Date().toISOString()
+  let processados = 0
+  let pulados = 0
+  let gravadas = 0
+  let anuncios = 0
 
-  for (const adId of adIds) {
+  // Descarrega o que já foi coletado e esvazia os buffers. Chamado durante o
+  // loop (a cada lote) e no fim — assim um estouro de tempo nunca zera o run.
+  async function flush() {
+    const loteRows = rows.splice(0)
+    const loteAds = adRows.splice(0)
+    const [a, b] = await Promise.all([
+      upsert('meta_insights', 'ad_id,date', loteRows),
+      upsert('meta_ads', 'ad_id,date', loteAds),
+    ])
+    // Status é acessório: não derruba o run se falhar.
+    await upsert('meta_status', 'id', statusRows.splice(0))
+    if (a) falhasGravacao.push(`meta_insights: ${a}`)
+    else gravadas += loteRows.length
+    if (b) falhasGravacao.push(`meta_ads: ${b}`)
+    else anuncios += loteAds.length
+  }
+
+  // Coleta os 3 recortes de UM conjunto (insights do conjunto, dos seus anúncios
+  // e o status de ambos). Vários destes rodam em paralelo — ver o pool abaixo.
+  async function coletar(adId: string) {
     const url =
       `${API}/${adId}/insights?fields=${fields}` +
       `&time_range=${timeRange}&time_increment=1&limit=500` +
@@ -78,7 +128,7 @@ Deno.serve(async (req) => {
     try {
       const res = await fetch(url)
       const j = await res.json()
-      if (!res.ok || j.error) { erros.push({ ad_id: adId, error: j.error ?? `HTTP ${res.status}` }); continue }
+      if (!res.ok || j.error) { erros.push({ ad_id: adId, error: j.error ?? `HTTP ${res.status}` }); return }
       for (const d of j.data ?? []) {
         rows.push({
           ad_id: adId, // = adset.id (chave de junção com vendas.tracking_src)
@@ -154,44 +204,29 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 3) Upsert (merge por ad_id+date).
-  if (rows.length > 0) {
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/meta_insights?on_conflict=ad_id,date`, {
-        method: 'POST',
-        headers: { ...sbHeaders, Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify(rows),
-      })
-      if (!res.ok) return Response.json({ ok: false, step: 'gravar', error: await res.text() }, { status: 502 })
-    } catch (e) {
-      return Response.json({ ok: false, step: 'gravar', error: String(e) }, { status: 502 })
-    }
+  // Pool: CONCURRENCY conjuntos por vez, gravando a cada lote. Se o orçamento de
+  // tempo acabar, para de começar novos (os que faltam entram no próximo run).
+  for (let i = 0; i < adIds.length; i += CONCURRENCY) {
+    if (Date.now() - t0 > TIME_BUDGET_MS) { pulados = adIds.length - i; break }
+    const lote = adIds.slice(i, i + CONCURRENCY)
+    await Promise.all(lote.map(coletar))
+    processados += lote.length
+    await flush()
   }
+  await flush()
 
-  // 3b) Upsert dos anúncios.
-  if (adRows.length > 0) {
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/meta_ads?on_conflict=ad_id,date`, {
-        method: 'POST',
-        headers: { ...sbHeaders, Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify(adRows),
-      })
-      if (!res.ok) return Response.json({ ok: false, step: 'gravar-ads', error: await res.text() }, { status: 502 })
-    } catch (e) {
-      return Response.json({ ok: false, step: 'gravar-ads', error: String(e) }, { status: 502 })
-    }
-  }
-
-  // 3c) Upsert do status (ativo/pausado), merge por id.
-  if (statusRows.length > 0) {
-    try {
-      await fetch(`${SUPABASE_URL}/rest/v1/meta_status?on_conflict=id`, {
-        method: 'POST',
-        headers: { ...sbHeaders, Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify(statusRows),
-      })
-    } catch (_e) { /* status é acessório; não falha o run */ }
-  }
-
-  return Response.json({ ok: true, since, until, conjuntos: adIds.length, gravadas: rows.length, anuncios: adRows.length, status: statusRows.length, falhas: erros.length })
+  return Response.json({
+    ok: falhasGravacao.length === 0,
+    since,
+    until,
+    conjuntos: adIds.length,
+    processados,
+    pulados,
+    gravadas,
+    anuncios,
+    falhas: erros.length,
+    erro_exemplo: erros[0]?.error ?? null,
+    falhas_gravacao: falhasGravacao,
+    segundos: Math.round((Date.now() - t0) / 1000),
+  })
 })
