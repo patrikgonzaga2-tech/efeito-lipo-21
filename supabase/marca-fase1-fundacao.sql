@@ -28,8 +28,13 @@ create table if not exists public.produtos_catalogo (
 -- Semeia o catálogo (recria do zero a cada run pra refletir ajustes).
 delete from public.produtos_catalogo;
 insert into public.produtos_catalogo (match_tipo, match_valor, produto, familia, tipo, ordem) values
-  ('contem', 'vitalíc',              'Efeito Lipo Vitalício', 'Efeito Lipo', 'upsell',     10),
-  ('contem', 'vitalic',              'Efeito Lipo Vitalício', 'Efeito Lipo', 'upsell',     11),
+  -- Vitalício é ORDER BUMP (confirmado: is_order_bump=true na Hotmart e no
+  -- checkout da Greenn). 3 grafias porque a Greenn cadastrou "Vitálicio" (acento
+  -- no A) e a Hotmart usa "Vitalício" — sem as três, cai no generico 'efeito
+  -- lipo' (ordem 90) e vira "principal", inflando o produto principal.
+  ('contem', 'vitalíc',              'Efeito Lipo Vitalício', 'Efeito Lipo', 'bump',       10),
+  ('contem', 'vitalic',              'Efeito Lipo Vitalício', 'Efeito Lipo', 'bump',       11),
+  ('contem', 'vitálic',              'Efeito Lipo Vitalício', 'Efeito Lipo', 'bump',       12),
   ('contem', 'cinturinha',           'Cinturinha Express',    'Efeito Lipo', 'bump',       20),
   ('contem', 'dieta metab',          'Dieta Metabólica',      'Efeito Lipo', 'bump',       25),
   ('contem', 'livro',                'Livro de Receitas',     'Efeito Lipo', 'bump',       30),
