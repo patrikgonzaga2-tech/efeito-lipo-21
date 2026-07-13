@@ -3,32 +3,22 @@ import { sbRpc, supabaseConfigured } from '@/lib/supabase'
 import Login from '../_login'
 import { DashboardShell } from '../_shell'
 import { PeriodFilter, resolvePeriod, type SearchParams } from '../_period'
+import { categorize, PRODUTOS, type Cat } from '../_catalogo'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Gateways — Efeito Lipo', robots: { index: false, follow: false } }
 
 type Row = { gateway: string; product_name: string; vendas: number; receita: number; liquido: number; reembolsos: number; reembolsos_valor: number }
-type Cat = 'main' | 'cinturinha' | 'livro' | 'vitalicio' | 'outro'
 type Gw = 'hotmart' | 'greenn'
 
 const N = (v: unknown) => Number(v) || 0
 const brl0 = (n: number) => 'R$ ' + Math.round(n).toLocaleString('pt-BR')
 const pct1 = (n: number, d: number) => (d > 0 ? (Math.round((n / d) * 1000) / 10).toLocaleString('pt-BR') + '%' : '—')
 
-// Mesma classificação por nome usada na aba Produtos.
-function categorize(name: string): Cat {
-  const n = (name || '').toLowerCase()
-  if (n.includes('vitalíc') || n.includes('vitalic')) return 'vitalicio'
-  if (n.includes('cinturinha')) return 'cinturinha'
-  if (n.includes('receita') || n.includes('livro')) return 'livro'
-  if (n.includes('efeito lipo')) return 'main'
-  return 'outro'
-}
-
 type Bucket = { vendas: number; receita: number; liquido: number; reemb: number }
 const zero = (): Bucket => ({ vendas: 0, receita: 0, liquido: 0, reemb: 0 })
-const emptyAgg = (): Record<Cat, Bucket> => ({ main: zero(), cinturinha: zero(), livro: zero(), vitalicio: zero(), outro: zero() })
+const emptyAgg = (): Record<Cat, Bucket> => ({ main: zero(), cinturinha: zero(), livro: zero(), vitalicio: zero(), dieta: zero(), outro: zero() })
 
 const GW_META: Record<Gw, { label: string; color: string }> = {
   hotmart: { label: 'Hotmart', color: 'var(--gd)' },
@@ -71,13 +61,8 @@ export default async function GatewaysPage({ searchParams }: { searchParams: Pro
   const receitaTotal = (g: Gw) => (Object.keys(agg[g]) as Cat[]).reduce((a, c) => a + agg[g][c].receita, 0)
   const grandLiquido = gateways.reduce((a, g) => a + liquidoTotal(g), 0)
 
-  const produtos: { nome: string; cat: Cat }[] = [
-    { nome: 'Efeito Lipo (principal)', cat: 'main' },
-    { nome: 'Cinturinha Express', cat: 'cinturinha' },
-    { nome: 'Livro de Receitas', cat: 'livro' },
-    { nome: 'Efeito Lipo Vitalício', cat: 'vitalicio' },
-  ]
-  const bumps: { nome: string; cat: Cat }[] = produtos.filter((p) => p.cat !== 'main')
+  const produtos = PRODUTOS
+  const bumps = produtos.filter((p) => p.cat !== 'main')
 
   const td: React.CSSProperties = { padding: '11px 14px', fontSize: 14, color: 'var(--ink)' }
   const tdR: React.CSSProperties = { ...td, textAlign: 'right' }

@@ -3,26 +3,17 @@ import { sbRpc, supabaseConfigured } from '@/lib/supabase'
 import Login from '../_login'
 import { DashboardShell } from '../_shell'
 import { PeriodFilter, resolvePeriod, type SearchParams } from '../_period'
+import { categorize, BUMPS, type Cat } from '../_catalogo'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Produtos — Efeito Lipo', robots: { index: false, follow: false } }
 
 type Prod = { product_name: string; vendas: number; receita: number; liquido: number; reembolsos: number; reembolsos_valor: number }
-type Cat = 'main' | 'cinturinha' | 'livro' | 'vitalicio' | 'outro'
 
 const N = (v: unknown) => Number(v) || 0
 const brl0 = (n: number) => 'R$ ' + Math.round(n).toLocaleString('pt-BR')
 const pct1 = (n: number, d: number) => (d > 0 ? (Math.round((n / d) * 1000) / 10).toLocaleString('pt-BR') + '%' : '—')
-
-function categorize(name: string): Cat {
-  const n = (name || '').toLowerCase()
-  if (n.includes('vitalíc') || n.includes('vitalic')) return 'vitalicio'
-  if (n.includes('cinturinha')) return 'cinturinha'
-  if (n.includes('receita') || n.includes('livro')) return 'livro'
-  if (n.includes('efeito lipo')) return 'main'
-  return 'outro'
-}
 
 function Card({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
@@ -45,8 +36,9 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Pro
   // Seção Efeito Lipo: travado em 'hotmart'. O catálogo da marca toda fica no /painel.
   const produtos = await sbRpc<Prod>('vendas_por_produto', { p_since: since, p_until: until, p_gateway: 'hotmart' })
 
+  const zero = () => ({ vendas: 0, receita: 0, liquido: 0, reemb: 0 })
   const totals: Record<Cat, { vendas: number; receita: number; liquido: number; reemb: number }> = {
-    main: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, cinturinha: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, livro: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, vitalicio: { vendas: 0, receita: 0, liquido: 0, reemb: 0 }, outro: { vendas: 0, receita: 0, liquido: 0, reemb: 0 },
+    main: zero(), cinturinha: zero(), livro: zero(), vitalicio: zero(), dieta: zero(), outro: zero(),
   }
   for (const p of produtos) {
     const c = categorize(p.product_name)
@@ -60,11 +52,7 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Pro
   // % de reembolso = devolvidas ÷ total de compras pagas (líquidas + devolvidas).
   const refRate = (vendas: number, reemb: number) => pct1(reemb, vendas + reemb)
 
-  const bumps: { nome: string; cat: Cat }[] = [
-    { nome: 'Cinturinha Express', cat: 'cinturinha' },
-    { nome: 'Livro de Receitas', cat: 'livro' },
-    { nome: 'Efeito Lipo Vitalício', cat: 'vitalicio' },
-  ]
+  const bumps = BUMPS
   const bumpVendas = bumps.reduce((a, b) => a + totals[b.cat].vendas, 0)
   const bumpReceita = bumps.reduce((a, b) => a + totals[b.cat].receita, 0)
 
