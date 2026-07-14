@@ -7,7 +7,9 @@
 // deixava o da Greenn cair no genérico 'efeito lipo' e ser contado como
 // PRINCIPAL. Por isso normalizamos: tiramos os acentos antes de comparar.
 
-export type Cat = 'main' | 'cinturinha' | 'livro' | 'vitalicio' | 'dieta' | 'outro'
+// 'outro' = fora da família Efeito Lipo (hoje: Comunidade Corpo Feliz, que é
+// assinatura e tem o seu próprio lugar no /painel).
+export type Cat = 'main' | 'cinturinha' | 'livro' | 'vitalicio' | 'dieta' | 'planner' | 'outro'
 
 // "Vitálicio" e "Vitalício" viram "vitalicio" — o acento deixa de importar.
 const semAcento = (s: string) =>
@@ -18,10 +20,14 @@ export function categorize(name: string): Cat {
   if (n.includes('vitalic')) return 'vitalicio'   // antes do genérico: o nome contém "efeito lipo"
   if (n.includes('cinturinha')) return 'cinturinha'
   if (n.includes('dieta metab')) return 'dieta'
+  if (n.includes('planner')) return 'planner'
   if (n.includes('receita') || n.includes('livro')) return 'livro'
   if (n.includes('efeito lipo')) return 'main'
   return 'outro'
 }
+
+// É da família Efeito Lipo? (o principal ou um dos bumps dele)
+export const ehEfeitoLipo = (name: string) => categorize(name) !== 'outro'
 
 // Order bumps, na ordem em que aparecem nas tabelas do dashboard.
 export const BUMPS: { nome: string; cat: Cat }[] = [
@@ -29,6 +35,7 @@ export const BUMPS: { nome: string; cat: Cat }[] = [
   { nome: 'Cinturinha Express', cat: 'cinturinha' },
   { nome: 'Livro de Receitas', cat: 'livro' },
   { nome: 'Dieta Metabólica', cat: 'dieta' },
+  { nome: 'Planner de Metas', cat: 'planner' },
 ]
 
 // Principal + bumps (usado onde a tabela mostra tudo junto).

@@ -3,7 +3,7 @@ import { sbRpc, supabaseConfigured } from '@/lib/supabase'
 import Login from '../_login'
 import { DashboardShell } from '../_shell'
 import { PeriodFilter, resolvePeriod, type SearchParams } from '../_period'
-import { categorize, BUMPS, type Cat } from '../_catalogo'
+import { categorize, ehEfeitoLipo, BUMPS, type Cat } from '../_catalogo'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,12 +33,16 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Pro
 
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
-  // Seção Efeito Lipo: travado em 'hotmart'. O catálogo da marca toda fica no /painel.
-  const produtos = await sbRpc<Prod>('vendas_por_produto', { p_since: since, p_until: until, p_gateway: 'hotmart' })
+  // Os DOIS gateways (p_gateway null): o quiz migrou pra Greenn em 09/07 — travado
+  // em 'hotmart', esta aba ia esvaziando sozinha. Ficamos com a família Efeito Lipo
+  // (principal + bumps) e deixamos a Comunidade de fora: é assinatura, tem valor de
+  // ticket muito maior e distorceria a adesão dos bumps. Ela vive no /painel.
+  const todos = await sbRpc<Prod>('vendas_por_produto', { p_since: since, p_until: until, p_gateway: null })
+  const produtos = todos.filter((p) => ehEfeitoLipo(p.product_name))
 
   const zero = () => ({ vendas: 0, receita: 0, liquido: 0, reemb: 0 })
   const totals: Record<Cat, { vendas: number; receita: number; liquido: number; reemb: number }> = {
-    main: zero(), cinturinha: zero(), livro: zero(), vitalicio: zero(), dieta: zero(), outro: zero(),
+    main: zero(), cinturinha: zero(), livro: zero(), vitalicio: zero(), dieta: zero(), planner: zero(), outro: zero(),
   }
   for (const p of produtos) {
     const c = categorize(p.product_name)

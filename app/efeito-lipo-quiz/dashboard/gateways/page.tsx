@@ -18,7 +18,7 @@ const pct1 = (n: number, d: number) => (d > 0 ? (Math.round((n / d) * 1000) / 10
 
 type Bucket = { vendas: number; receita: number; liquido: number; reemb: number }
 const zero = (): Bucket => ({ vendas: 0, receita: 0, liquido: 0, reemb: 0 })
-const emptyAgg = (): Record<Cat, Bucket> => ({ main: zero(), cinturinha: zero(), livro: zero(), vitalicio: zero(), dieta: zero(), outro: zero() })
+const emptyAgg = (): Record<Cat, Bucket> => ({ main: zero(), cinturinha: zero(), livro: zero(), vitalicio: zero(), dieta: zero(), planner: zero(), outro: zero() })
 
 const GW_META: Record<Gw, { label: string; color: string }> = {
   hotmart: { label: 'Hotmart', color: 'var(--gd)' },
