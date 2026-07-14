@@ -64,19 +64,24 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
   const lucro = liquido - spend
   const ticket = div(receita, vendas)
 
-  // ROAS de ANÚNCIOS: receita do canal ads ÷ investimento (não blended, pra não
-  // dividir o gasto do Meta por venda orgânica/comercial e mentir o número).
-  const receitaAds = N(canais.find((c) => c.canal === 'ads')?.receita)
-  const roasAds = div(receitaAds, spend)
-
-  // ROAS TOTAL (blended): faturamento de AQUISIÇÃO ÷ investimento. Tira a
-  // recorrência (assinatura cobrada da base) do numerador — ela não foi comprada
-  // com o dinheiro do Meta. Com ela dentro, o card marcava 2,13x enquanto a
-  // aquisição real rendia 1,22x: R$ 27,5 mil de assinatura inflavam o retorno
-  // aparente do tráfego pago.
+  // Duas perguntas diferentes, dois números:
+  //
+  // ROAS TOTAL — "quanto de faturamento o dinheiro de mídia trouxe?"
+  //   AQUISIÇÃO (bruto) ÷ investido. Tira a recorrência do numerador: assinatura
+  //   cobrada da base não foi comprada com o dinheiro do Meta. Com ela dentro o
+  //   card marcava 2,16x quando a aquisição real rendia 1,36x.
+  //
+  // ROI — "quanto de LUCRO sobrou sobre o que investi?"
+  //   (líquido do negócio inteiro − investido) ÷ investido. Aqui a recorrência
+  //   ENTRA: é caixa que o negócio recebeu no período. E usa o LÍQUIDO (após as
+  //   taxas dos gateways), não o bruto — senão não é lucro, é faturamento.
+  //   É o mesmo lucro do card ao lado, expresso como % do investimento.
+  //
+  // O "ROAS de anúncios" (só o canal ads) vive na aba Canais, junto do CAC.
   const receitaRecorrencia = N(canais.find((c) => c.canal === 'recorrencia')?.receita)
   const receitaAquisicao = receita - receitaRecorrencia
   const roasTotal = div(receitaAquisicao, spend)
+  const roi = spend > 0 ? (lucro / spend) * 100 : 0
 
   // Famílias (junta gateways): agrega por familia
   const famMap = new Map<string, { vendas: number; receita: number; liquido: number }>()
@@ -106,13 +111,19 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
         <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="faturamento ÷ pedidos" />
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
         <Card label="Lucro" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
-        <Card label="ROAS de anúncios" value={spend > 0 ? roasAds.toFixed(2) + 'x' : '—'} sub="faturamento de ads ÷ investido" accent={spend > 0 ? (roasAds >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
-        <Card label="ROAS total" value={spend > 0 ? roasTotal.toFixed(2) + 'x' : '—'} sub="aquisição ÷ investido (sem recorrência)" accent={spend > 0 ? (roasTotal >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
+        <Card label="ROAS total" value={spend > 0 ? roasTotal.toFixed(2) + 'x' : '—'} sub="aquisição ÷ investido · sem recorrência" accent={spend > 0 ? (roasTotal >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
+        <Card label="ROI" value={spend > 0 ? (roi >= 0 ? '+' : '') + roi.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + '%' : '—'} sub="lucro ÷ investido · com recorrência" accent={spend > 0 ? (roi >= 0 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
         <Card label="Reembolsos" value={int(reembolsos)} sub={`${reembValor > 0 ? brl0(reembValor) + ' · ' : ''}${pct1(reembolsos, itens)} dos itens`} accent="#c0392b" />
       </div>
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-        💡 <strong>Pedidos</strong> = clientes que compraram (quem leva o principal + 2 bumps conta 1). <strong>Itens</strong> = cada produto vendido — é o número que fecha com a tabela por produto abaixo. Sobre o retorno: o <strong>ROAS de anúncios</strong> divide só o faturamento que veio de anúncio pelo investido. O <strong>ROAS total</strong> divide toda a <strong>aquisição</strong> (inclui orgânico, comercial e direto) pelo investido — mas <strong>deixa a recorrência de fora</strong>: assinatura cobrada da base não foi comprada com o dinheiro do Meta, e somá-la fazia o retorno parecer quase o dobro do real. Greenn capturada desde <strong>25/06</strong>; Hotmart desde 19/06.
+        💡 <strong>Pedidos</strong> = clientes que compraram (quem leva o principal + 2 bumps conta 1). <strong>Itens</strong> = cada produto vendido — é o número que fecha com a tabela por produto abaixo.
+        <br /><br />
+        <strong>ROAS total</strong> responde &quot;quanto de <em>faturamento</em> a mídia trouxe?&quot;: divide a <strong>aquisição</strong> (anúncios + orgânico + comercial + direto, no bruto) pelo investido. Deixa a recorrência de fora — assinatura cobrada da base não foi comprada com o dinheiro do Meta, e somá-la fazia o retorno parecer quase o dobro do real.
+        <br /><br />
+        <strong>ROI</strong> responde &quot;quanto de <em>lucro</em> sobrou sobre o que investi?&quot;: pega o <strong>líquido do negócio inteiro</strong> — já sem as taxas dos gateways e <strong>com a recorrência junto</strong>, que é caixa que entrou —, subtrai o investido e divide pelo investido. É o card <strong>Lucro</strong> ao lado, escrito como porcentagem. +100% significa que cada R$ 1 investido virou R$ 1 de lucro.
+        <br /><br />
+        O <strong>ROAS de anúncios</strong> (só o canal pago, sem os outros) e o <strong>CAC</strong> ficam na aba <strong>Canais</strong>. Greenn capturada desde <strong>25/06</strong>; Hotmart desde 19/06.
       </div>
 
       {/* Por gateway */}
