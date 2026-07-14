@@ -107,8 +107,8 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))' }}>
         <Card label="Faturamento" value={brl0(receita)} sub="bruto · todos os gateways" accent="var(--g)" />
         <Card label="Líquido" value={brl0(liquido)} sub="após taxas dos gateways" accent="var(--g)" />
-        <Card label="Pedidos" value={int(vendas)} sub={`${int(itens)} itens (com order bumps)`} accent="var(--g)" />
-        <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="faturamento ÷ pedidos" />
+        <Card label="Compras" value={int(vendas)} sub={`${int(itens)} itens — é o nº que fecha com a Greenn`} accent="var(--g)" />
+        <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="faturamento ÷ compras" />
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
         <Card label="Lucro" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
         <Card label="ROAS total" value={spend > 0 ? roasTotal.toFixed(2) + 'x' : '—'} sub="aquisição ÷ investido · sem recorrência" accent={spend > 0 ? (roasTotal >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
@@ -117,7 +117,9 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
       </div>
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-        💡 <strong>Pedidos</strong> = clientes que compraram (quem leva o principal + 2 bumps conta 1). <strong>Itens</strong> = cada produto vendido — é o número que fecha com a tabela por produto abaixo.
+        💡 <strong>Compras</strong> = carrinhos (quem leva o principal + 2 bumps conta 1). <strong>Itens</strong> = cada produto vendido — <strong>é este que bate com o relatório da Greenn e da Hotmart</strong>, e com a tabela por produto abaixo. Se você conferir o painel contra o gateway, compare <em>itens</em>, não compras.
+        <br /><br />
+        Todo valor aqui é de <strong>compra viva</strong>: venda devolvida sai do faturamento e do líquido (antes o dinheiro reembolsado era contado como receita), e o reembolso é datado pelo <strong>dia da devolução</strong>. Compras de teste ficam de fora.
         <br /><br />
         <strong>ROAS total</strong> responde &quot;quanto de <em>faturamento</em> a mídia trouxe?&quot;: divide a <strong>aquisição</strong> (anúncios + orgânico + comercial + direto, no bruto) pelo investido. Deixa a recorrência de fora — assinatura cobrada da base não foi comprada com o dinheiro do Meta, e somá-la fazia o retorno parecer quase o dobro do real.
         <br /><br />
@@ -134,7 +136,7 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
             <div key={g.gateway} className="rounded-2xl p-5" style={{ background: '#fff', border: '1px solid rgba(0,0,0,.07)' }}>
               <div className="font-display" style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>{GW_LABEL[g.gateway] || g.gateway}</div>
               <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--g)', marginTop: 6 }} className="font-display">{brl0(N(g.receita))}</div>
-              <div style={{ fontSize: 12.5, color: 'var(--sub)', marginTop: 2 }}>{int(N(g.vendas))} vendas · {brl0(N(g.liquido))} líquido</div>
+              <div style={{ fontSize: 12.5, color: 'var(--sub)', marginTop: 2 }}>{int(N(g.itens))} itens · {int(N(g.vendas))} compras · {brl0(N(g.liquido))} líquido</div>
               <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 6 }}>{pct1(N(g.receita), receita)} do faturamento da marca</div>
             </div>
           ))}
@@ -149,7 +151,8 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
             <thead><tr style={{ borderBottom: '1px solid rgba(0,0,0,.08)' }}>
               <th style={{ ...thR, textAlign: 'left' }}>Canal</th>
-              <th style={thR}>Vendas</th>
+              <th style={thR}>Compras</th>
+              <th style={thR}>Itens</th>
               <th style={thR}>Faturamento</th>
               <th style={thR}>Líquido</th>
               <th style={thR}>% do faturamento</th>
@@ -159,6 +162,7 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
                 <tr key={c.canal} style={{ borderTop: i ? '1px solid rgba(0,0,0,.05)' : 'none' }}>
                   <td style={{ ...td, fontWeight: 700 }}>{CANAL_LABEL[c.canal] || c.canal}</td>
                   <td style={tdR}>{int(N(c.vendas))}</td>
+                  <td style={tdR}>{int(N(c.itens))}</td>
                   <td style={tdR}>{brl0(N(c.receita))}</td>
                   <td style={{ ...tdR, color: 'var(--g)', fontWeight: 700 }}>{brl0(N(c.liquido))}</td>
                   <td style={tdR}>{pct1(N(c.receita), receita)}</td>
@@ -180,7 +184,7 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
               <th style={{ ...thR, textAlign: 'left' }}>Família</th>
               <th style={{ ...thR, textAlign: 'left' }}>Tipo</th>
               <th style={{ ...thR, textAlign: 'left' }}>Gateway</th>
-              <th style={thR}>Vendas</th>
+              <th style={thR}>Itens</th>
               <th style={thR}>Faturamento</th>
               <th style={thR}>Líquido</th>
             </tr></thead>
@@ -201,7 +205,7 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
         </div>
         {familias.length > 1 && (
           <p style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 10 }}>
-            Por família: {familias.map(([f, v]) => `${f} ${brl0(v.receita)} (${int(v.vendas)} vendas)`).join(' · ')}.
+            Por família: {familias.map(([f, v]) => `${f} ${brl0(v.receita)} (${int(v.vendas)} itens)`).join(' · ')}.
           </p>
         )}
       </section>

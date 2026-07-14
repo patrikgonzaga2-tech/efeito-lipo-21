@@ -11,6 +11,27 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
+// ── Canal da visita: página pós-compra × WhatsApp ───────────────────────────
+// A Greenn redireciona pra cá depois da compra com ?token=…&s_id=<id da venda>.
+// O TOKEN é o que autoriza a cobrança em 1 clique — sem ele, o one-click não
+// cobra (a Greenn não reconhece a cliente). Por isso ele também é o sinal mais
+// honesto de canal:
+//   • com token  → veio do redirect pós-compra              → canal 'pagina'
+//   • sem token  → veio de um link (WhatsApp, salvo, print) → canal 'wa'/'link'
+//
+// MENSAGEM DO ROTEIRO: os links que a Laüra já manda no WhatsApp marcam a
+// mensagem no utm_content (d1-oferta-abre, d1-oferta-12h, d2-oferta-ultimas…).
+// Respeitamos essa convenção — os links que já estão na mão das clientes passam
+// a rastrear sem precisar trocar nada. ?m= é o apelido curto pra links novos.
+//
+// Cuidado: nas visitas vindas do redirect, o utm_content carrega o xcod do
+// ANÚNCIO (só números e underscore, ex.: 1783860754497_178386098359312) — isso
+// não é mensagem. Daí o teste de ter letra.
+const GREENN_CHECKOUT = 'https://payfast.greenn.com.br/148339/offer/8QUFs9'
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined
+const ehCodigoDeMensagem = (v?: string) => Boolean(v && /[a-zA-Z]/.test(v))
+type SP = Record<string, string | string[] | undefined>
+
 // ── Greenn One-Click — "Modal de Compra" ────────────────────────────────────
 // Código fornecido pela Greenn (painel do upsell). Faz duas coisas: define a
 // função global startLoading() (só o spinner de feedback no botão) e injeta o
@@ -208,19 +229,33 @@ function LauraPhoto({
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-export default function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
+  const sp = await searchParams
+  const token = first(sp.token)                 // só o redirect pós-compra da Greenn traz
+  const oneClick = Boolean(token)
+  const codigo = first(sp.m) ?? first(sp.utm_content) ?? first(sp.xcod)
+  const msg = !oneClick && ehCodigoDeMensagem(codigo) ? codigo!.slice(0, 40) : undefined
+  const canal = first(sp.c) || (oneClick ? 'pagina' : msg ? 'wa' : 'link')
+  const checkoutUrl = `${GREENN_CHECKOUT}?${new URLSearchParams({
+    up_canal: canal, ...(msg ? { up_msg: msg } : {}),
+  })}`
+
   return (
     <>
-      <Pageview />
+      <Pageview canal={canal} msg={msg} saleId={first(sp.s_id)} />
       {/* Sem JS, o reveal ficaria invisível — garante conteúdo visível. */}
       <noscript><style>{`.reveal{opacity:1 !important;transform:none !important}`}</style></noscript>
 
       {/* Greenn One-Click — Modal de Compra (define startLoading + injeta
           upsell.js). afterInteractive: carrega assim que a página fica
-          interativa; os botões [data-greenn-upsell] já estão no HTML. */}
-      <Script id="greenn-upsell-modal" strategy="afterInteractive">
-        {GREENN_UPSELL_MODAL}
-      </Script>
+          interativa; os botões [data-greenn-upsell] já estão no HTML.
+          Só faz sentido com token: sem ele o script não cobra — e ainda
+          sequestraria o clique pra uma aba nova sem rastreio. */}
+      {oneClick && (
+        <Script id="greenn-upsell-modal" strategy="afterInteractive">
+          {GREENN_UPSELL_MODAL}
+        </Script>
+      )}
 
       <main style={{ background: BASE, color: INK, overflowX: 'hidden' }}>
 
@@ -501,7 +536,7 @@ export default function Page() {
               acesso ao conteúdo do aplicativo, grupo e já iniciamos nossa jornada juntinhas.
             </p>
             <div style={{ marginTop: 'clamp(26px,5vw,34px)' }}>
-              <CheckoutCta label="preco">QUERO ESSA CONDIÇÃO</CheckoutCta>
+              <CheckoutCta oneClick={oneClick} checkoutUrl={checkoutUrl} label="preco">QUERO ESSA CONDIÇÃO</CheckoutCta>
               <p style={{ fontSize: 13, lineHeight: 1.55, color: MUTE, margin: '14px auto 0', maxWidth: 400 }}>
                 🔒 Pagamento único de R$147 · Acesso imediato · Garantia de 21 dias
               </p>
@@ -555,7 +590,7 @@ export default function Page() {
               </p>
             </div>
             <div style={{ marginTop: 'clamp(28px,5.5vw,36px)' }}>
-              <CheckoutCta label="urgencia">Sim, quero a profe Laüra comigo</CheckoutCta>
+              <CheckoutCta oneClick={oneClick} checkoutUrl={checkoutUrl} label="urgencia">Sim, quero a profe Laüra comigo</CheckoutCta>
               <p style={{ fontSize: 13, lineHeight: 1.55, color: MUTE, margin: '16px auto 0', maxWidth: 400 }}>
                 🔒 Pagamento único de R$147 · Acesso imediato · Garantia de 21 dias
               </p>
@@ -611,7 +646,7 @@ export default function Page() {
             </p>
           </div>
           <div style={{ marginTop: 'clamp(28px,6vw,40px)' }}>
-            <CheckoutCta label="fechamento">QUERO COMEÇAR ACOMPANHADA AGORA</CheckoutCta>
+            <CheckoutCta oneClick={oneClick} checkoutUrl={checkoutUrl} label="fechamento">QUERO COMEÇAR ACOMPANHADA AGORA</CheckoutCta>
             <p style={{ fontSize: 13, lineHeight: 1.55, color: MUTE, textAlign: 'center', margin: '16px auto 0', maxWidth: 400 }}>
               🔒 R$147 à vista · Acesso na hora · 21 dias de garantia
             </p>

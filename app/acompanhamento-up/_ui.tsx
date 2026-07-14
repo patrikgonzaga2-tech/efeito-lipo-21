@@ -18,10 +18,15 @@ function track(event: string, extra: Record<string, unknown> = {}) {
 // visualização no Supabase (beacon /api/upsell) — é a etapa "foram pra página
 // de upsell" do funil pós-compra no dashboard. id de sessão insert-ignore, então
 // recargas não recontam.
+//
+// canal/msg/saleId vêm da URL (lidos no servidor, em page.tsx): é o que separa
+// quem caiu aqui pelo redirect pós-compra de quem veio de um link do WhatsApp,
+// e qual mensagem do roteiro trouxe. O saleId (s_id da Greenn) é o número da
+// compra do Efeito Lipo — a ponte com a venda no dashboard.
 const VIEW_ID_KEY = 'acompanhamento_up_vid'
-export function Pageview() {
+export function Pageview({ canal, msg, saleId }: { canal: string; msg?: string; saleId?: string }) {
   useEffect(() => {
-    track('acompanhamento_up_pageview')
+    track('acompanhamento_up_pageview', { canal, msg })
     try {
       let vid = sessionStorage.getItem(VIEW_ID_KEY)
       if (!vid) {
@@ -34,10 +39,10 @@ export function Pageview() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         keepalive: true,
-        body: JSON.stringify({ id: vid, slug: 'acompanhamento-up', xcod }),
+        body: JSON.stringify({ id: vid, slug: 'acompanhamento-up', xcod, canal, msg, sale_id: saleId }),
       }).catch(() => { /* beacon best-effort */ })
     } catch { /* ignore */ }
-  }, [])
+  }, [canal, msg, saleId])
   return null
 }
 
@@ -204,19 +209,55 @@ export function CountdownPill({
   )
 }
 
-// ── CTA de checkout — Greenn One-Click Buy ───────────────────────────────────
-// Botão de compra em 1 clique da Greenn. O comportamento (a cobrança no cartão
-// que a cliente já usou no Efeito Lipo) é injetado pelo "Modal de Compra" da
-// Greenn — ver o <Script> em page.tsx —, que define a função global
-// startLoading() e processa os atributos data-greenn-*. Aqui só marcamos o
-// botão com o ID da oferta e disparamos startLoading no clique; o design (pill
-// verde) e a copy continuam nossos.
+// ── CTA de checkout — dois caminhos ──────────────────────────────────────────
+// 1) COM token na URL (a cliente veio do redirect pós-compra da Greenn): compra
+//    em 1 CLIQUE. O comportamento é injetado pelo "Modal de Compra" da Greenn
+//    (ver o <Script> em page.tsx), que define startLoading() e processa os
+//    atributos data-greenn-*. Só o cartão que ela acabou de usar é cobrado.
 //
-// IMPORTANTE: o one-click só cobra se a página for aberta pelo redirect da
-// Greenn após a compra (é assim que ela reconhece a sessão/cartão da cliente).
+// 2) SEM token (link do WhatsApp, link salvo, compartilhado): o one-click não
+//    tem como cobrar — sem token a Greenn não reconhece a sessão/cartão. O
+//    script dela, nesse caso, joga a cliente numa ABA NOVA do checkout, sem
+//    rastreio nenhum (e aba nova costuma ser bloqueada no celular). Então aqui
+//    NÃO usamos o botão da Greenn: é um link normal pro checkout da oferta, na
+//    mesma aba, levando up_canal/up_msg — que a Greenn guarda na venda e o
+//    dashboard usa pra dizer qual canal e qual mensagem venderam.
 const GREENN_UPSELL_ID = '6097'
 
-export function CheckoutCta({ children, label }: { children: ReactNode; label: string }) {
+const CTA_STYLE = {
+  width: '100%', maxWidth: 460, border: 'none', cursor: 'pointer',
+  padding: 'clamp(17px,2.6vw,20px) clamp(26px,5vw,40px)',
+  fontSize: 'clamp(15.5px,2.2vw,18px)', lineHeight: 1.2,
+  textAlign: 'center' as const, color: '#04300F', textDecoration: 'none',
+  background: 'linear-gradient(135deg,#2BE36F,#16BA50)',
+  boxShadow: '0 16px 46px rgba(37,211,102,.36)',
+}
+const CTA_CLASS =
+  'font-display inline-flex items-center justify-center gap-2 font-bold rounded-full transition-all duration-300 active:scale-[.97] hover:-translate-y-0.5'
+
+export function CheckoutCta({
+  children, label, oneClick, checkoutUrl,
+}: { children: ReactNode; label: string; oneClick: boolean; checkoutUrl: string }) {
+  const arrow = <span aria-hidden style={{ fontSize: '1.05em' }}>→</span>
+
+  if (!oneClick) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+        <a
+          href={checkoutUrl}
+          data-cta={label}
+          onClick={() => track('acompanhamento_up_cta_click', { local: label, via: 'checkout' })}
+          aria-label="Ir para o checkout — acompanhamento com a Laüra"
+          className={CTA_CLASS}
+          style={CTA_STYLE}
+        >
+          {children}
+          {arrow}
+        </a>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
       <button
@@ -227,24 +268,17 @@ export function CheckoutCta({ children, label }: { children: ReactNode; label: s
         data-loading="false"
         data-cta={label}
         onClick={(e) => {
-          track('acompanhamento_up_cta_click', { local: label })
+          track('acompanhamento_up_cta_click', { local: label, via: 'one-click' })
           // dispara o fluxo de cobrança em 1 clique da Greenn, se o modal já carregou
           const w = window as unknown as { startLoading?: (el: HTMLElement) => void }
           w.startLoading?.(e.currentTarget)
         }}
         aria-label="Comprar em 1 clique — acompanhamento com a Laüra"
-        className="font-display inline-flex items-center justify-center gap-2 font-bold rounded-full transition-all duration-300 active:scale-[.97] hover:-translate-y-0.5"
-        style={{
-          width: '100%', maxWidth: 460, border: 'none', cursor: 'pointer',
-          padding: 'clamp(17px,2.6vw,20px) clamp(26px,5vw,40px)',
-          fontSize: 'clamp(15.5px,2.2vw,18px)', lineHeight: 1.2,
-          textAlign: 'center', color: '#04300F',
-          background: 'linear-gradient(135deg,#2BE36F,#16BA50)',
-          boxShadow: '0 16px 46px rgba(37,211,102,.36)',
-        }}
+        className={CTA_CLASS}
+        style={CTA_STYLE}
       >
         {children}
-        <span aria-hidden style={{ fontSize: '1.05em' }}>→</span>
+        {arrow}
       </button>
     </div>
   )
