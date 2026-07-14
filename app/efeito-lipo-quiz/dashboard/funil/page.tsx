@@ -18,7 +18,9 @@ type Resumo = {
 
 // Continuação do funil: upsell one-click pós-compra (/acompanhamento-up). Isolado
 // pela OFERTA; base = compradores do principal na Greenn (quem vê o upsell).
-const UPSELL_OFFER = '8QUFs9', MAIN_PRODUCT = '181143', UPSELL_SLUG = 'acompanhamento-up'
+// Duas ofertas: O8j7nc (atual · R$97 a cada 3 meses) e 8QUFs9 (antiga · R$147
+// uma vez). O histórico do upsell não pode sumir quando a oferta muda.
+const UPSELL_OFFERS = ['O8j7nc', '8QUFs9'], MAIN_PRODUCT = '181143', UPSELL_SLUG = 'acompanhamento-up'
 type UpsellResumo = { vendas: number; base: number; views: number; receita: number; liquido: number }
 
 const brl = (n: number) => 'R$ ' + (Math.round(n * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })
@@ -52,7 +54,7 @@ export default async function FunilPage({ searchParams }: { searchParams: Promis
   // Meta continua completo.
   const [[r], [u]] = await Promise.all([
     sbRpc<Resumo>('funil_resumo', { p_since: since, p_until: until, p_only_ads: true, p_greenn_sck: 'efeito-lipo-quiz' }),
-    sbRpc<UpsellResumo>('upsell_resumo', { p_since: since, p_until: until, p_upsell_offer: UPSELL_OFFER, p_main_product: MAIN_PRODUCT, p_slug: UPSELL_SLUG }),
+    sbRpc<UpsellResumo>('upsell_resumo', { p_since: since, p_until: until, p_upsell_offers: UPSELL_OFFERS, p_main_product: MAIN_PRODUCT, p_slug: UPSELL_SLUG }),
   ])
   const d: Resumo = r ?? { spend: 0, impressions: 0, link_clicks: 0, lp_views: 0, ic: 0, purchases_meta: 0, value_meta: 0, vendas_real: 0, itens_vendidos: 0, receita_real: 0, liquido_real: 0, reembolsos_qtd: 0, reembolsos_valor: 0, aguardando_qtd: 0, aguardando_valor: 0, abandono_qtd: 0 }
   const n = (v: unknown) => Number(v) || 0

@@ -9,9 +9,11 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Upsell — Efeito Lipo', robots: { index: false, follow: false } }
 
 // ── Identificadores do upsell (one-click Greenn na /acompanhamento-up) ───────
-// Isolado pela OFERTA (o produto trimestral tem outras ofertas). Se a Greenn
-// trocar o hash da oferta, muda-se só aqui. MAIN = principal que vê o upsell.
-const UPSELL_OFFER = '8QUFs9'          // Comunidade Trimestral · oferta de R$147 do upsell
+// Isolado pelas OFERTAS (o produto trimestral tem outras, da recorrência avulsa).
+// São DUAS porque a oferta mudou em 14/07/2026 e o histórico não pode sumir da
+// tela: O8j7nc (atual · R$97 a cada 3 meses) e 8QUFs9 (antiga · R$147 uma vez).
+// Oferta nova = mais um item aqui. MAIN = o principal de quem vê o upsell.
+const UPSELL_OFFERS = ['O8j7nc', '8QUFs9']
 const MAIN_PRODUCT = '181143'          // Efeito Lipo 21D (Greenn) — base da conversão
 const UPSELL_SLUG = 'acompanhamento-up' // upsell_views.slug (visualizações da página)
 
@@ -56,7 +58,7 @@ export default async function UpsellPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
   const args = {
-    p_since: since, p_until: until, p_upsell_offer: UPSELL_OFFER, p_main_product: MAIN_PRODUCT, p_slug: UPSELL_SLUG,
+    p_since: since, p_until: until, p_upsell_offers: UPSELL_OFFERS, p_main_product: MAIN_PRODUCT, p_slug: UPSELL_SLUG,
   }
   const [[r], canais] = await Promise.all([
     sbRpc<Resumo>('upsell_resumo', args),
@@ -75,8 +77,9 @@ export default async function UpsellPage({ searchParams }: { searchParams: Promi
     <DashboardShell active="upsell">
       <h1 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>Upsell</h1>
       <p style={{ fontSize: 13.5, color: 'var(--sub)', marginBottom: 18 }}>
-        O upsell de <strong>1 clique</strong> da <strong>/acompanhamento-up</strong> (Comunidade Corpo Feliz — Trimestral, oferta de R$147),
-        oferecido a quem acabou de comprar o <strong>Efeito Lipo</strong> na Greenn. A conversão é <strong>vendas do upsell ÷ compras do principal</strong>.
+        O upsell da <strong>/acompanhamento-up</strong> (Comunidade Corpo Feliz — Trimestral), oferecido a quem acabou de comprar o{' '}
+        <strong>Efeito Lipo</strong> na Greenn. Desde <strong>14/07/2026</strong> a oferta é <strong>R$97 a cada 3 meses</strong> (assinatura);
+        antes era R$147 em cobrança única. A conversão é <strong>vendas do upsell ÷ compras do principal</strong>.
       </p>
 
       <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} />
@@ -167,12 +170,12 @@ export default async function UpsellPage({ searchParams }: { searchParams: Promi
 
       {semVenda && (
         <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-          ⏳ <strong>Ainda sem vendas do upsell no período.</strong> Duas condições precisam estar valendo: (1) a <strong>/acompanhamento-up</strong> setada como página de upsell pós-compra do Efeito Lipo no painel da Greenn; (2) a oferta cobrada ser a <strong>{UPSELL_OFFER}</strong>. Assim que sair a 1ª venda, confira aqui — se ela não aparecer, o hash da oferta pode ter mudado (ajuste a constante <strong>UPSELL_OFFER</strong> em page.tsx).
+          ⏳ <strong>Ainda sem vendas do upsell no período.</strong> Duas condições precisam estar valendo: (1) a <strong>/acompanhamento-up</strong> setada como página de upsell pós-compra do Efeito Lipo no painel da Greenn; (2) a oferta cobrada ser uma destas: <strong>{UPSELL_OFFERS.join(' · ')}</strong>. Se a Greenn trocar o hash da oferta de novo, some a nova em <strong>UPSELL_OFFERS</strong> (em page.tsx) — mantendo as antigas, senão o histórico desaparece.
         </div>
       )}
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12, color: 'var(--mute)', lineHeight: 1.55, background: 'rgba(0,0,0,.02)', border: '1px solid rgba(0,0,0,.06)' }}>
-        <strong>Como medimos:</strong> vendas do upsell = pedidos aprovados da oferta <strong>{UPSELL_OFFER}</strong> (Comunidade Trimestral R$147), isolada da recorrência avulsa da mesma comunidade (que usa outras ofertas). Base = compras aprovadas do <strong>Efeito Lipo 21D na Greenn</strong> (quem cai na página do upsell). Datas ancoradas na <strong>aprovação</strong>; líquido = valor do produtor após as taxas. Reembolsos ancorados na data de entrada do evento.
+        <strong>Como medimos:</strong> venda do upsell = <strong>primeira</strong> compra aprovada de cada cliente nas ofertas <strong>{UPSELL_OFFERS.join(' · ')}</strong> (Comunidade Trimestral), isoladas da recorrência avulsa da mesma comunidade. A oferta atual <strong>renova a cada 3 meses</strong>: a renovação NÃO entra aqui (não é conversão nova da página — ela vive na aba Recorrência, senão o mesmo dinheiro apareceria duas vezes). Base = compras aprovadas do <strong>Efeito Lipo 21D na Greenn</strong> (quem cai na página do upsell). Compra devolvida e compra de teste ficam de fora; reembolso é datado pelo dia da devolução.
       </div>
     </DashboardShell>
   )

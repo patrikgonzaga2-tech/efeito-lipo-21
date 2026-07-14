@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 // Cuidado: nas visitas vindas do redirect, o utm_content carrega o xcod do
 // ANÚNCIO (só números e underscore, ex.: 1783860754497_178386098359312) — isso
 // não é mensagem. Daí o teste de ter letra.
-const GREENN_CHECKOUT = 'https://payfast.greenn.com.br/148339/offer/8QUFs9'
+const GREENN_CHECKOUT = 'https://payfast.greenn.com.br/148339/offer/O8j7nc'
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined
 const ehCodigoDeMensagem = (v?: string) => Boolean(v && /[a-zA-Z]/.test(v))
 type SP = Record<string, string | string[] | undefined>
@@ -126,6 +126,18 @@ function Section({
 // Container de leitura à esquerda (texto longo lê melhor alinhado à esquerda).
 function Read({ children }: { children: ReactNode }) {
   return <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>{children}</div>
+}
+
+// Letra miúda embaixo de cada botão. É o ÚNICO lugar da página que fala da
+// renovação — o corpo do texto não menciona assinatura. Curta, discreta, mas
+// explícita: a cliente precisa saber que será cobrada de novo, senão a cobrança
+// surpresa vira reembolso/chargeback (e chargeback em volume suspende o gateway).
+function Renovacao({ extra }: { extra?: string }) {
+  return (
+    <p style={{ fontSize: 12.5, lineHeight: 1.55, color: MUTE, margin: '14px auto 0', maxWidth: 420 }}>
+      🔒 Renova por R$97 a cada 3 meses · cancele quando quiser{extra ? ` · ${extra}` : ''} · garantia de 21 dias
+    </p>
+  )
 }
 
 // Acento não-verbal no topo da seção — ponto + hairline. Detalhe silencioso.
@@ -520,16 +532,22 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             <p style={{ fontSize: 'clamp(20px,5vw,24px)', color: MUTE, textDecoration: 'line-through', margin: '20px 0 0', fontWeight: 500 }}>
               De R$497
             </p>
+            {/* O preço grande é o MENSAL — é ele que carrega a oferta ("menos de
+                um lanche por mês"). O corpo da página não fala de assinatura (a
+                pedido do Vinicius); a renovação vive na letra miúda abaixo de
+                CADA botão (RENOVACAO), curta mas explícita. Ela NÃO pode sumir:
+                a oferta O8j7nc cobra R$97 a cada 90 dias enquanto a cliente não
+                cancelar, e cobrança que a cliente não esperava volta como
+                reembolso e chargeback — que é o que derruba conta em gateway. */}
             <p style={{
               fontFamily: 'var(--font-display)', fontWeight: 800,
               fontSize: 'clamp(2.6rem,11vw,3.4rem)', lineHeight: 1, color: O_TEXT,
               margin: '6px 0 0', letterSpacing: '-0.02em',
             }}>
-              por R$147
+              menos de R$33 por mês
             </p>
-            <p style={{ ...BODY, fontSize: 'clamp(15px,3.9vw,16px)', margin: '20px auto 0', maxWidth: 440 }}>
-              Pagamento único. Sem mensalidade, sem recorrência. Você paga uma vez e
-              leva o acompanhamento inteiro, os 2 meses de bônus e o app completo.
+            <p style={{ ...BODY, fontSize: 'clamp(16px,4.2vw,18px)', margin: '14px auto 0', maxWidth: 440, color: INK, fontWeight: 700 }}>
+              R$97 — acompanhamento personalizado com a Laüra.
             </p>
             <p style={{ fontSize: 'clamp(14px,3.6vw,15px)', lineHeight: 1.55, color: MUTE, margin: '16px auto 0', maxWidth: 420 }}>
               Assim que garantir essa condição, você já recebe imediatamente todo
@@ -537,9 +555,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             </p>
             <div style={{ marginTop: 'clamp(26px,5vw,34px)' }}>
               <CheckoutCta oneClick={oneClick} checkoutUrl={checkoutUrl} label="preco">QUERO ESSA CONDIÇÃO</CheckoutCta>
-              <p style={{ fontSize: 13, lineHeight: 1.55, color: MUTE, margin: '14px auto 0', maxWidth: 400 }}>
-                🔒 Pagamento único de R$147 · Acesso imediato · Garantia de 21 dias
-              </p>
+              <Renovacao extra="Acesso imediato" />
             </div>
           </div>
         </Section>
@@ -581,9 +597,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             <h2 style={{ ...H2, maxWidth: 520 }}>Essa condição é só agora, e é só aqui.</h2>
             <div style={{ maxWidth: 520, margin: '22px auto 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <p style={{ ...BODY, textAlign: 'center' }}>
-                Eu só consigo deixar pelo valor de R$147,00 com tudo isso disponível,
-                porque você acabou de entrar para o Efeito Lipo. É meu presente e
-                retribuição à sua confiança em meu trabalho.
+                Eu só consigo deixar por R$97 — menos de R$33 por mês — com tudo isso
+                disponível, porque você acabou de entrar para o Efeito Lipo.
+                É meu presente e retribuição à sua confiança em meu trabalho.
               </p>
               <p style={{ ...BODY, textAlign: 'center', color: INK, fontWeight: 600 }}>
                 Mas é válido somente agora e aqui nesta página.
@@ -591,9 +607,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             </div>
             <div style={{ marginTop: 'clamp(28px,5.5vw,36px)' }}>
               <CheckoutCta oneClick={oneClick} checkoutUrl={checkoutUrl} label="urgencia">Sim, quero a profe Laüra comigo</CheckoutCta>
-              <p style={{ fontSize: 13, lineHeight: 1.55, color: MUTE, margin: '16px auto 0', maxWidth: 400 }}>
-                🔒 Pagamento único de R$147 · Acesso imediato · Garantia de 21 dias
-              </p>
+              <Renovacao />
             </div>
           </div>
         </Section>
@@ -648,7 +662,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           <div style={{ marginTop: 'clamp(28px,6vw,40px)' }}>
             <CheckoutCta oneClick={oneClick} checkoutUrl={checkoutUrl} label="fechamento">QUERO COMEÇAR ACOMPANHADA AGORA</CheckoutCta>
             <p style={{ fontSize: 13, lineHeight: 1.55, color: MUTE, textAlign: 'center', margin: '16px auto 0', maxWidth: 400 }}>
-              🔒 R$147 à vista · Acesso na hora · 21 dias de garantia
+              🔒 Renova por R$97 a cada 3 meses · cancele quando quiser · acesso na hora · 21 dias de garantia
             </p>
           </div>
         </Section>

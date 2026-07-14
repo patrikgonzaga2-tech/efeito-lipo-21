@@ -222,7 +222,10 @@ export function CountdownPill({
 //    NÃO usamos o botão da Greenn: é um link normal pro checkout da oferta, na
 //    mesma aba, levando up_canal/up_msg — que a Greenn guarda na venda e o
 //    dashboard usa pra dizer qual canal e qual mensagem venderam.
-const GREENN_UPSELL_ID = '6097'
+// Upsell 6152 = oferta O8j7nc (R$97 a cada 3 meses). O 6097 (R$147, cobrança
+// única, oferta 8QUFs9) foi aposentado em 14/07/2026 — as vendas dele continuam
+// no painel, que lê as duas ofertas.
+const GREENN_UPSELL_ID = '6152'
 
 const CTA_STYLE = {
   width: '100%', maxWidth: 460, border: 'none', cursor: 'pointer',
