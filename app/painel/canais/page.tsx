@@ -18,8 +18,13 @@ const int = (n: number) => Math.round(n).toLocaleString('pt-BR')
 const pct1 = (n: number, d: number) => (d > 0 ? (Math.round((n / d) * 1000) / 10).toLocaleString('pt-BR') + '%' : '—')
 const div = (n: number, d: number) => (d > 0 ? n / d : 0)
 
+// 'recorrencia' = assinatura da Comunidade cobrada sem rastreio de campanha.
+// Antes ela caía em "direto" e respondia por 95% dele — o painel dizia
+// "R$ 32 mil faturados sem mídia" como se fosse aquisição, quando é a base
+// pagando de novo. Separada, o "direto" voltou ao tamanho real (~R$ 1,4 mil).
 const CANAL: Record<string, { label: string; cor: string; pago: boolean }> = {
   ads: { label: 'Anúncios', cor: 'var(--o)', pago: true },
+  recorrencia: { label: 'Recorrência (assinatura)', cor: 'var(--gd)', pago: false },
   comercial: { label: 'Comercial / WhatsApp', cor: 'var(--g)', pago: false },
   organico: { label: 'Orgânico', cor: 'var(--g)', pago: false },
   direto: { label: 'Direto / sem rastreio', cor: 'var(--mute)', pago: false },
@@ -53,7 +58,13 @@ export default async function CanaisPage({ searchParams }: { searchParams: Promi
   const adsRow = canais.find((c) => c.canal === 'ads')
   const receitaAds = N(adsRow?.receita), vendasAds = N(adsRow?.vendas)
   const roasAds = div(receitaAds, spend), cacAds = div(spend, vendasAds)
-  const receitaLivre = canais.filter((c) => c.canal !== 'ads').reduce((a, c) => a + N(c.receita), 0)
+  // "Sem mídia" = aquisição que não veio de anúncio (comercial, orgânico, direto).
+  // A RECORRÊNCIA fica fora: assinatura da base não é aquisição, e somá-la aqui
+  // fazia o card prometer R$ 32 mil "sem mídia" quando o real é ~R$ 4,4 mil.
+  const receitaRecorrencia = N(canais.find((c) => c.canal === 'recorrencia')?.receita)
+  const receitaLivre = canais
+    .filter((c) => c.canal !== 'ads' && c.canal !== 'recorrencia')
+    .reduce((a, c) => a + N(c.receita), 0)
 
   const td: React.CSSProperties = { padding: '11px 14px', fontSize: 14, color: 'var(--ink)' }
   const tdR: React.CSSProperties = { ...td, textAlign: 'right' }
@@ -71,7 +82,8 @@ export default async function CanaisPage({ searchParams }: { searchParams: Promi
         <Card label="Investido (Meta)" value={brl0(spend)} sub="custo do canal Anúncios" />
         <Card label="ROAS de anúncios" value={spend > 0 ? roasAds.toFixed(2) + 'x' : '—'} sub="faturamento ads ÷ investido" accent={spend > 0 ? (roasAds >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
         <Card label="CAC de anúncios" value={vendasAds > 0 ? brl(cacAds) : '—'} sub="investido ÷ vendas de ads" accent="var(--o)" />
-        <Card label="Faturamento sem mídia" value={brl0(receitaLivre)} sub={`${pct1(receitaLivre, receitaTotal)} sem custo de anúncio`} accent="var(--g)" />
+        <Card label="Aquisição sem mídia" value={brl0(receitaLivre)} sub={`${pct1(receitaLivre, receitaTotal)} do faturamento · orgânico, comercial e direto`} accent="var(--g)" />
+        <Card label="Recorrência (base)" value={brl0(receitaRecorrencia)} sub={`${pct1(receitaRecorrencia, receitaTotal)} do faturamento · assinatura, não é aquisição`} accent="var(--gd)" />
       </div>
 
       <section className="mt-7">
@@ -110,7 +122,7 @@ export default async function CanaisPage({ searchParams }: { searchParams: Promi
             </tbody>
           </table>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>Canais sem mídia (orgânico, comercial/WhatsApp, direto) não têm custo de anúncio — por isso ROAS &quot;∞&quot; e CAC R$ 0. O investido do Meta é atribuído ao canal Anúncios. A classificação de canal é uma 1ª versão e vai refinar conforme a Greenn traz mais origens.</p>
+        <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>Canais sem custo de anúncio aparecem com ROAS &quot;∞&quot; e CAC R$ 0 — <strong>isso não quer dizer que sejam mais lucrativos</strong>, só que o custo deles não está no Meta. <strong>Recorrência</strong> é a assinatura da Comunidade cobrada da base: não é aquisição e por isso saiu do &quot;direto&quot; (onde respondia por 95% do valor) e do card de aquisição sem mídia. O investido do Meta é atribuído ao canal Anúncios.</p>
       </section>
     </PainelShell>
   )

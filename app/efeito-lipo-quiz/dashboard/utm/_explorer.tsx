@@ -24,10 +24,14 @@ const DIMS: Dim[] = [
   { id: 'sck',      title: 'Funil (sck)',           keyOf: (v) => v.sck || '(sem sck)' },
   { id: 'source',   title: 'Origem (utm_source)',   keyOf: (v) => dec(v.utm_source) || '(sem rastreio / orgânico)' },
   { id: 'campaign', title: 'Campanha (utm_campaign)', keyOf: (v) => dec(v.utm_campaign) || '(sem rastreio)' },
-  { id: 'medium',   title: 'Conjunto (utm_medium)', keyOf: (v) => dec(v.utm_medium) || '(sem rastreio)' },
+  // Conjunto pelo ID, não pelo nome. No Meta os nomes se repetem à exaustão:
+  // 149 conjuntos reais viravam 13 linhas, e "ABERTO" sozinho carregava
+  // R$ 22 mil como se fosse um conjunto só. O id (src) é o que distingue.
+  { id: 'adset_id', title: 'Conjunto (ID)',         keyOf: (v) => v.src || '(sem rastreio)' },
+  { id: 'medium',   title: 'Conjunto (nome)',       keyOf: (v) => dec(v.utm_medium) || '(sem rastreio)' },
   { id: 'content',  title: 'Anúncio (utm_content)', keyOf: (v) => dec(v.utm_content) || '(sem rastreio)' },
 ]
-const DIM_LABEL: Record<string, string> = { sck: 'Funil', source: 'Origem', campaign: 'Campanha', medium: 'Conjunto', content: 'Anúncio' }
+const DIM_LABEL: Record<string, string> = { sck: 'Funil', source: 'Origem', campaign: 'Campanha', adset_id: 'Conjunto (ID)', medium: 'Conjunto', content: 'Anúncio' }
 
 function Card({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (

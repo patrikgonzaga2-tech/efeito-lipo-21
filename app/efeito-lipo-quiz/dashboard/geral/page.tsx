@@ -96,11 +96,11 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
         <p style={{ fontSize: 12.5, color: 'var(--sub)', marginBottom: 14 }}>O que saiu das vendas (reembolso) e o que ainda pode virar venda (pagamento pendente e carrinho abandonado).</p>
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
           <Card label="Reembolsos" value={int(refQtd)} sub={`${refValor > 0 ? brl0(refValor) + ' devolvidos · ' : ''}${refPct} das vendas`} accent="#c0392b" />
-          <Card label="Aguardando pagamento" value={int(aguQtd)} sub={`${brl0(aguValor)} a receber · boleto/Pix gerado`} accent="var(--o)" />
-          <Card label="Abandono de carrinho" value={int(abaQtd)} sub="carrinhos abandonados no checkout" accent="var(--o)" />
+          <Card label="Aguardando pagamento" value={int(aguQtd)} sub={`${brl0(aguValor)} a receber · Pix/boleto gerado e não pago`} accent="var(--o)" />
+          <Card label="Abandono de carrinho" value={int(abaQtd)} sub="só Hotmart — a Greenn não avisa" accent="var(--mute)" />
         </div>
         <p style={{ fontSize: 12, color: 'var(--mute)', marginTop: 8 }}>
-          As <strong>vendas líquidas já descontam os reembolsos</strong> — o número reflete a realidade atual de cada compra. Reembolso = compra paga e devolvida. Aguardando = boleto/Pix gerado e ainda não pago. Abandono só é rastreado na Hotmart (a Greenn não manda esse evento) e não traz valor, por isso mostramos só a quantidade.
+          As <strong>vendas líquidas já descontam os reembolsos</strong> — uma compra devolvida sai do faturamento (antes ela continuava somando, apesar deste texto). O <strong>reembolso é datado pelo dia da devolução</strong>, não pelo dia da compra, então o card mostra o dinheiro que saiu do caixa no período. <strong>Aguardando</strong> = Pix/boleto gerado e ainda não pago; hoje é quase todo da Greenn, e por muito tempo o painel não enxergava nada disso (procurava só pelo nome de evento da Hotmart). <strong>Abandono</strong> só existe na Hotmart — a Greenn não manda esse aviso, então esse número tende a zero com o funil 100% Greenn e <strong>não mede mais o negócio</strong>; o equivalente aqui é o &quot;aguardando&quot;.
         </p>
       </section>
     </DashboardShell>

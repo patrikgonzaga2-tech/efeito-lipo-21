@@ -54,12 +54,22 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
   // Nome e campanha do conjunto por id (pra mostrar/filtrar os anúncios reais).
   const adsetNameOf = new Map(conjuntos.map((c) => [c.adset_id, c.adset_name]))
   const campaignOfAdset = new Map(conjuntos.map((c) => [c.adset_id, c.campaign_id || c.adset_id]))
-  // Investido por nome de anúncio (normalizado) — pro ROAS real por anúncio,
-  // quando o nome do criativo casar com o ad_name do Meta.
-  const spendByAdName = new Map<string, number>()
-  for (const a of ads) { const k = norm(a.ad_name); if (k) spendByAdName.set(k, (spendByAdName.get(k) || 0) + N(a.spend)) }
+  // Investido por anúncio, casado por CONJUNTO + NOME — não só pelo nome.
+  //
+  // O link de anúncio não carrega o id do criativo (só o id do CONJUNTO, no
+  // utm_term, e o NOME do anúncio, no utm_content). Casar só pelo nome era
+  // desastroso: existem 74 anúncios diferentes chamados "AD2", e a tela somava
+  // o gasto dos 74 em cada linha que se chamasse assim. A soma da coluna
+  // "Investido" dava R$ 267.970 num mês em que se investiu R$ 35.116 — 7,6x.
+  // O par (conjunto + nome) é único e resolve sem precisar do id do criativo.
+  const keyOf = (adsetId: string | null | undefined, adName: string | null | undefined) => `${adsetId ?? ''}|${norm(adName ?? '')}`
+  const spendByAd = new Map<string, number>()
+  for (const a of ads) {
+    const k = keyOf(a.adset_id, a.ad_name)
+    if (k !== '|') spendByAd.set(k, (spendByAd.get(k) || 0) + N(a.spend))
+  }
   const anuncioRows: RealAdRow[] = vendasAnuncio.map((a) => {
-    const spend = spendByAdName.get(norm(a.anuncio)) || 0
+    const spend = spendByAd.get(keyOf(a.adset_id, a.anuncio)) || 0
     return {
       nome: dec(a.anuncio) || a.anuncio, conjunto: adsetNameOf.get(a.adset_id) || a.adset_id,
       adset_id: a.adset_id, campaignId: campaignOfAdset.get(a.adset_id),

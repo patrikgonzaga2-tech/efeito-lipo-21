@@ -131,39 +131,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const realVendas = Number(resumo?.vendas_real) || 0
   const realSpend = Number(resumo?.spend) || 0
 
-  // ── Teste A/B de checkout: Hotmart × Greenn ───────────────────────
-  // Vendas/receita por gateway, SÓ do funil do quiz (tracking_sck=efeito-lipo-
-  // quiz), via RPC quiz_checkout_ab. O denominador (quantos entraram em cada
-  // checkout) vem das próprias sessões: checkout_ab é gravado no clique de compra.
-  type CheckoutRow = { gateway: string; vendas: number; itens: number; receita: number; liquido: number; reembolsos: number; reembolsos_valor: number }
-  let checkoutRows: CheckoutRow[] = []
-  try { checkoutRows = await sbRpc<CheckoutRow>('quiz_checkout_ab', { p_since: sinceIso, p_until: untilForRpc }) } catch { checkoutRows = [] }
-  const checkoutAb = (['hotmart', 'greenn'] as const).map((g) => {
-    const cliques = sessions.filter((s) => s.checkout_ab === g).length
-    const row = checkoutRows.find((r) => r.gateway === g)
-    const vendas = Number(row?.vendas) || 0
-    const receita = Number(row?.receita) || 0
-    const liquido = Number(row?.liquido) || 0
-    // Gasto rateado pela fatia de cliques do braço (o Meta não separa por
-    // checkout — o mesmo tráfego é dividido, então o rateio é proporcional).
-    const totalCliques = sessions.filter((s) => s.checkout_ab === 'hotmart' || s.checkout_ab === 'greenn').length
-    const spendArm = totalCliques > 0 ? realSpend * (cliques / totalCliques) : 0
-    return {
-      g,
-      label: g === 'hotmart' ? 'Hotmart (A)' : 'Greenn (B)',
-      cliques,
-      vendas,
-      receita,
-      liquido,
-      taxa: pct(vendas, cliques),
-      rps: cliques > 0 ? receita / cliques : 0, // receita por clique de checkout
-      roas: spendArm > 0 ? receita / spendArm : 0,
-    }
-  })
-  const abCkLeader = checkoutAb[0].cliques && checkoutAb[1].cliques
-    ? (checkoutAb[0].taxa === checkoutAb[1].taxa ? null : checkoutAb[1].taxa > checkoutAb[0].taxa ? 'greenn' : 'hotmart')
-    : null
-  const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+  // ── Testes A/B: ENCERRADOS ────────────────────────────────────────
+  // Os dois cards de A/B saíram daqui (checkout e 1ª tela) porque os testes
+  // acabaram e os placares eram enganosos:
+  //
+  // • CHECKOUT (Hotmart × Greenn), encerrado em 08/07 → 100% Greenn.
+  //   O card comparava vendas do PERÍODO INTEIRO contra cliques que só passaram
+  //   a ser gravados em 02/07 (quando `checkout_ab` entrou no ar). A Hotmart
+  //   vendeu semanas antes de existir denominador, aparecia com ~94% de
+  //   conversão e ganhava o selo "na frente" — apontando para um checkout que
+  //   já estava desligado. Além disso o numerador contava toda venda com
+  //   sck=efeito-lipo-quiz (inclusive orgânica/WhatsApp), que nunca passou por
+  //   uma sessão sorteada.
+  //
+  // • 1ª TELA (A × B), sem tráfego na versão A desde 19/06. Em qualquer janela
+  //   recente A ficava com 0 sessões → 0% — como se a versão original tivesse
+  //   desabado, quando na verdade ela só não roda mais.
+  //
+  // O histórico dos dois vive no bloco "Testes encerrados" abaixo. Quando abrir
+  // um teste novo, este é o lugar de reconstruir o card — com a janela do teste
+  // fixada e o numerador casado à sessão (por xcod), não pelo sck.
 
   // Pageviews = TODAS as linhas (toda sessão nasce na 1ª tela, com status
   // 'pageview'). Inícios = quem clicou em "Iniciar" (status deixa de ser
@@ -171,22 +158,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // denominador do topo do funil.
   const total = sessions.length
   const starts = sessions.filter((s) => s.status !== 'pageview').length
-
-  // ── Teste A/B da 1ª tela ──────────────────────────────────────────
-  // A = versão original (controle, a que estava no ar) · B = versão nova.
-  // "Taxa de início" = inícios ÷ visualizações: a conversão da 1ª tela.
-  // Sessões sem intro_ab (anteriores ao teste) ficam de fora da comparação.
-  const abStats = (['A', 'B'] as const).map((v) => {
-    const rows = sessions.filter((s) => s.intro_ab === v)
-    const startsV = rows.filter((s) => s.status !== 'pageview').length
-    // Page view REAL (Meta) estimado pra versão: total do Meta repartido pela
-    // fatia de sessões da versão (o sorteio é 50/50, então é proporcional).
-    const views = total > 0 ? Math.round(realPV * (rows.length / total)) : 0
-    return { v, views, starts: startsV, rate: pct(startsV, views), label: v === 'A' ? 'original (controle)' : 'nova' }
-  })
-  const abLeader = abStats[0].views && abStats[1].views
-    ? (abStats[1].rate === abStats[0].rate ? null : abStats[1].rate > abStats[0].rate ? 'B' : 'A')
-    : null
 
   // Funil por etapa (quantas sessões alcançaram cada tela)
   // Tela 0 (início) = visualizações reais do Meta (page view). As demais telas
@@ -238,57 +209,31 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <Card label="Vendas" value={String(realVendas)} sub="reais · Hotmart + Greenn (funil)" accent="var(--g)" />
       </div>
 
-      <Section title="Teste A/B — 1ª tela">
-        <div className="grid gap-4 md:grid-cols-2">
-          {abStats.map(({ v, views, starts: st, rate, label }) => {
-            const win = abLeader === v
-            return (
-              <div key={v} className="rounded-2xl p-5" style={{ background: '#fff', border: win ? '2px solid var(--g)' : '1px solid rgba(0,0,0,.07)', boxShadow: '0 4px 16px rgba(0,0,0,.04)' }}>
-                <div className="flex items-center gap-2" style={{ marginBottom: 2 }}>
-                  <span className="font-display" style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>Versão {v}</span>
-                  <span style={{ fontSize: 12.5, color: 'var(--mute)' }}>· {label}</span>
-                  {win && <span style={{ marginLeft: 'auto', fontSize: 11.5, fontWeight: 800, color: 'var(--g)', textTransform: 'uppercase', letterSpacing: '.04em' }}>na frente ▲</span>}
-                </div>
-                <div className="font-display" style={{ fontSize: 40, fontWeight: 800, color: v === 'A' ? 'var(--gd)' : 'var(--o)', lineHeight: 1.1, marginTop: 6 }}>{rate}%</div>
-                <div style={{ fontSize: 12.5, color: 'var(--sub)' }}>taxa de início (clicaram em começar)</div>
-                <div style={{ fontSize: 13, color: 'var(--sub)', marginTop: 12 }}>
-                  ~<strong style={{ color: 'var(--ink)' }}>{views}</strong> page views (Meta) · <strong style={{ color: 'var(--ink)' }}>{st}</strong> inícios
-                </div>
+      <Section title="Testes encerrados">
+        <div className="rounded-2xl p-5" style={{ background: '#fff', border: '1px solid rgba(0,0,0,.07)' }}>
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center gap-2" style={{ marginBottom: 3 }}>
+                <span className="font-display" style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--ink)' }}>Checkout — Hotmart × Greenn</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--g)', textTransform: 'uppercase', letterSpacing: '.05em', border: '1px solid var(--g)', borderRadius: 99, padding: '2px 8px' }}>encerrado 08/07</span>
               </div>
-            )
-          })}
+              <div style={{ fontSize: 13.5, color: 'var(--sub)' }}>
+                Decisão: <strong style={{ color: 'var(--ink)' }}>100% Greenn</strong>. O quiz não manda mais ninguém para a Hotmart.
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2" style={{ marginBottom: 3 }}>
+                <span className="font-display" style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--ink)' }}>1ª tela — versão A × B</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--g)', textTransform: 'uppercase', letterSpacing: '.05em', border: '1px solid var(--g)', borderRadius: 99, padding: '2px 8px' }}>encerrado 19/06</span>
+              </div>
+              <div style={{ fontSize: 13.5, color: 'var(--sub)' }}>
+                Decisão: <strong style={{ color: 'var(--ink)' }}>versão B</strong>. A versão original não recebe tráfego desde 19/06.
+              </div>
+            </div>
+          </div>
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 10 }}>
-          A = 1ª tela original (controle) · B = 1ª tela nova. Sorteio 50/50 por sessão. A taxa usa o <strong>page view real do Meta</strong> repartido entre A e B na proporção das sessões (o Meta não separa A/B nativamente — é estimativa proporcional). Sessões anteriores ao teste ficam fora.
-        </div>
-      </Section>
-
-      <Section title="Teste A/B — checkout (Hotmart × Greenn)">
-        <div className="grid gap-4 md:grid-cols-2">
-          {checkoutAb.map((c) => {
-            const win = abCkLeader === c.g
-            return (
-              <div key={c.g} className="rounded-2xl p-5" style={{ background: '#fff', border: win ? '2px solid var(--g)' : '1px solid rgba(0,0,0,.07)', boxShadow: '0 4px 16px rgba(0,0,0,.04)' }}>
-                <div className="flex items-center gap-2" style={{ marginBottom: 2 }}>
-                  <span className="font-display" style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>{c.label}</span>
-                  {win && <span style={{ marginLeft: 'auto', fontSize: 11.5, fontWeight: 800, color: 'var(--g)', textTransform: 'uppercase', letterSpacing: '.04em' }}>na frente ▲</span>}
-                </div>
-                <div className="font-display" style={{ fontSize: 40, fontWeight: 800, color: c.g === 'hotmart' ? 'var(--gd)' : 'var(--o)', lineHeight: 1.1, marginTop: 6 }}>{c.taxa}%</div>
-                <div style={{ fontSize: 12.5, color: 'var(--sub)' }}>taxa de conversão (vendas ÷ quem entrou no checkout)</div>
-                <div className="grid grid-cols-2 gap-3" style={{ marginTop: 14 }}>
-                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Entraram</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)' }}>{c.cliques}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Vendas</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--g)' }}>{c.vendas}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Receita</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)' }}>{brl(c.receita)}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Receita / entrada</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--o)' }}>{brl(c.rps)}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>ROAS (estim.)</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)' }}>{c.roas ? `${c.roas.toFixed(2)}x` : '—'}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Líquido</div><div className="font-display" style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)' }}>{brl(c.liquido)}</div></div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        <div style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 10 }}>
-          Sorteio 50/50 por sessão. <strong>Entraram</strong> = clicaram em comprar e foram para aquele checkout. <strong>Vendas/Receita</strong> vêm da tabela real de vendas, filtradas pelo funil do quiz (só este funil, mesmo que a Greenn tenha outros produtos). O <strong>ROAS é estimado</strong>: o Meta não separa gasto por checkout, então o gasto é rateado pela fatia de entradas de cada braço — a métrica mais limpa para decidir o vencedor é <strong>Receita / entrada</strong>. Vendas por boleto podem cair dias depois do clique.
+          Os placares ao vivo destes dois testes foram <strong>removidos</strong> porque enganavam. O do checkout comparava vendas do período inteiro contra cliques que só passaram a ser gravados em 02/07 — a Hotmart, que vendeu antes de existir o denominador, aparecia com ~94% de conversão e levava o selo de vencedora, apontando para um checkout já desligado. O da 1ª tela mostrava 0% na versão A em qualquer janela recente, como se ela tivesse desabado, quando ela apenas não roda mais. <strong>Ao abrir um teste novo, o card volta</strong> — com a janela do teste fixada e a venda casada à sessão pelo xcod.
         </div>
       </Section>
 

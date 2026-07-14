@@ -1,17 +1,26 @@
 // Helpers de período compartilhados pelas abas (fuso de Brasília -03:00).
 export type SearchParams = { range?: string; from?: string; to?: string }
 
+// Data (YYYY-MM-DD) de N dias atrás no fuso de Brasília.
+function spDate(offsetDays = 0): string {
+  return new Date(Date.now() - offsetDays * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+}
+
 export function resolvePeriod(sp: SearchParams): { since: string; until: string; range: string; periodLabel: string } {
   const range = sp.range || 'mes'
-  const spToday = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  const spToday = spDate(0)
   const nowIso = new Date().toISOString()
   if (range === 'custom' && (sp.from || sp.to)) {
     return { range, since: `${sp.from || spToday}T00:00:00-03:00`, until: `${sp.to || spToday}T23:59:59-03:00`, periodLabel: `${sp.from || '…'} até ${sp.to || '…'}` }
   }
   if (range === 'hoje') return { range, since: `${spToday}T00:00:00-03:00`, until: nowIso, periodLabel: 'hoje' }
   if (range === 'all') return { range, since: '2020-01-01T00:00:00-03:00', until: nowIso, periodLabel: 'todo o período' }
-  if (range === '7d') return { range, since: new Date(Date.now() - 7 * 86_400_000).toISOString(), until: nowIso, periodLabel: 'últimos 7 dias' }
-  if (range === '30d') return { range, since: new Date(Date.now() - 30 * 86_400_000).toISOString(), until: nowIso, periodLabel: 'últimos 30 dias' }
+  // 7d/30d ancoram na MEIA-NOITE de Brasília (hoje + os N-1 dias anteriores).
+  // Antes começavam na hora corrente de N dias atrás, e isso desalinhava o ROAS:
+  // o gasto do Meta é por DIA (o dia da borda entrava inteiro) mas a receita
+  // entrava só a partir daquela hora — o retorno aparecia ~10% menor do que é.
+  if (range === '7d') return { range, since: `${spDate(6)}T00:00:00-03:00`, until: nowIso, periodLabel: 'últimos 7 dias' }
+  if (range === '30d') return { range, since: `${spDate(29)}T00:00:00-03:00`, until: nowIso, periodLabel: 'últimos 30 dias' }
   return { range: 'mes', since: `${spToday.slice(0, 7)}-01T00:00:00-03:00`, until: nowIso, periodLabel: 'mês atual' }
 }
 

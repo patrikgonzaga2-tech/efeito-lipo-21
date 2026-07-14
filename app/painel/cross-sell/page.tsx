@@ -53,6 +53,11 @@ export default async function CrossSellPage({ searchParams }: { searchParams: Pr
 
   const elParaCom = pct1(N(d.el_e_com), N(d.clientes_el))
   const comParaEl = pct1(N(d.el_e_com), N(d.clientes_com))
+  // Abaixo de 10 clientes cruzados, uma "taxa de conversão" é ruído — mas na tela
+  // ela parecia medida (mostrava 0,1% em cima de 2 clientes). Sem amostra, o card
+  // fica vazio e diz por quê, em vez de exibir um número que não significa nada.
+  const AMOSTRA_MINIMA = 10
+  const amostraOk = N(d.el_e_com) >= AMOSTRA_MINIMA
 
   // famílias presentes (eixos da matriz) + lookup das células
   const fams = [...new Set(matriz.map((c) => c.familia_a))]
@@ -73,17 +78,17 @@ export default async function CrossSellPage({ searchParams }: { searchParams: Pr
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
         <Card label="Clientes únicos" value={int(N(d.clientes))} sub="com compra no período" accent="var(--g)" />
         <Card label="Compram +de 1 família" value={int(N(d.multi_familia))} sub={`${pct1(N(d.multi_familia), N(d.clientes))} dos clientes`} accent={N(d.multi_familia) > 0 ? 'var(--g)' : 'var(--mute)'} />
-        <Card label="Efeito Lipo → Comunidade" value={elParaCom} sub={`${int(N(d.el_e_com))} de ${int(N(d.clientes_el))} compradores do EL`} accent={N(d.el_e_com) > 0 ? 'var(--g)' : 'var(--o)'} />
-        <Card label="LTV médio" value={brl(N(d.ltv_medio))} sub="valor médio por cliente" accent="var(--g)" />
-        <Card label="Tempo até a Comunidade" value={d.dias_el_para_com != null ? `${N(d.dias_el_para_com).toLocaleString('pt-BR')} dias` : '—'} sub="do EL até virar assinante" />
+        <Card label="Efeito Lipo → Comunidade" value={amostraOk ? elParaCom : '—'} sub={amostraOk ? `${int(N(d.el_e_com))} de ${int(N(d.clientes_el))} compradores do EL` : `só ${int(N(d.el_e_com))} clientes cruzados — amostra insuficiente`} accent={amostraOk ? 'var(--g)' : 'var(--mute)'} />
+        <Card label="Receita média / cliente" value={brl(N(d.ltv_medio))} sub="desde 19/06 — ainda não é LTV" accent="var(--g)" />
+        <Card label="Tempo até a Comunidade" value={amostraOk && d.dias_el_para_com != null ? `${N(d.dias_el_para_com).toLocaleString('pt-BR')} dias` : '—'} sub={amostraOk ? 'do EL até virar assinante' : 'amostra insuficiente'} />
       </div>
 
       {/* Destaque/insight */}
-      <div className="rounded-xl p-4 mt-5" style={{ fontSize: 13.5, background: N(d.el_e_com) > 0 ? 'rgba(0,114,38,.07)' : 'rgba(245,113,0,.09)', color: 'var(--sub)', lineHeight: 1.6, border: `1px solid ${N(d.el_e_com) > 0 ? 'rgba(0,114,38,.2)' : 'rgba(245,113,0,.25)'}` }}>
-        {N(d.el_e_com) > 0 ? (
+      <div className="rounded-xl p-4 mt-5" style={{ fontSize: 13.5, background: 'rgba(245,113,0,.09)', color: 'var(--sub)', lineHeight: 1.6, border: '1px solid rgba(245,113,0,.25)' }}>
+        {amostraOk ? (
           <><strong>{elParaCom}</strong> dos compradores do Efeito Lipo também entraram na Comunidade ({int(N(d.el_e_com))} clientes). Inversamente, {comParaEl} dos assinantes vieram do Efeito Lipo.</>
         ) : (
-          <>💡 <strong>Oportunidade:</strong> {int(N(d.clientes_el))} pessoas compraram o Efeito Lipo e <strong>nenhuma</strong> entrou na Comunidade ainda. Conforme a Greenn roda, este número mostra quanto da sua base você está convertendo para a recorrência — e é provavelmente a alavanca de LTV mais barata que você tem (já são seus clientes).</>
+          <>💡 <strong>Oportunidade — e um aviso de leitura.</strong> Só <strong>{int(N(d.el_e_com))}</strong> {N(d.el_e_com) === 1 ? 'cliente comprou' : 'clientes compraram'} o Efeito Lipo <em>e</em> entraram na Comunidade. Com uma amostra dessa, qualquer porcentagem é ruído — por isso os cards acima aparecem vazios em vez de mostrar um número que parece medido. O que o dado diz de fato: a Comunidade é vendida para uma <strong>base que não passou pelo funil do Efeito Lipo</strong>. Converter os {int(N(d.clientes_el))} compradores do EL para a recorrência segue sendo a alavanca de LTV mais barata que existe — eles já são seus clientes.</>
         )}
       </div>
 

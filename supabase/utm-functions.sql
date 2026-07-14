@@ -1,3 +1,8 @@
+-- ⚠️ OBSOLETO — NÃO RODE ESTE ARQUIVO.
+-- Substituído por `auditoria-05-utm.sql`, que é a versão no ar.
+-- Além de desatualizado (não filtrava a Comunidade nem descontava reembolso),
+-- este arquivo está SINTATICAMENTE QUEBRADO: falta o `with` antes da primeira
+-- CTE, então rodá-lo no SQL Editor dá erro. Mantido só como histórico.
 -- ════════════════════════════════════════════════════════════════════
 -- Função vendas_utm: une as vendas reais da Hotmart (sck/src) com os UTMs
 -- capturados nas sessões do quiz (pelo id do conjunto = utm_term = tracking_src).

@@ -17,7 +17,7 @@ const UPSELL_SLUG = 'acompanhamento-up' // upsell_views.slug (visualizações da
 
 type Resumo = {
   vendas: number; receita: number; liquido: number
-  reembolsos: number; reembolsos_valor: number; base: number; views: number
+  reembolsos: number; reembolsos_valor: number; base: number; views: number; views_desde: string | null
 }
 
 const brl = (n: number) => 'R$ ' + (Math.round(n * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })
@@ -47,7 +47,7 @@ export default async function UpsellPage({ searchParams }: { searchParams: Promi
   const [r] = await sbRpc<Resumo>('upsell_resumo', {
     p_since: since, p_until: until, p_upsell_offer: UPSELL_OFFER, p_main_product: MAIN_PRODUCT, p_slug: UPSELL_SLUG,
   })
-  const d: Resumo = r ?? { vendas: 0, receita: 0, liquido: 0, reembolsos: 0, reembolsos_valor: 0, base: 0, views: 0 }
+  const d: Resumo = r ?? { vendas: 0, receita: 0, liquido: 0, reembolsos: 0, reembolsos_valor: 0, base: 0, views: 0, views_desde: null }
   const n = (v: unknown) => Number(v) || 0
   const vendas = n(d.vendas), receita = n(d.receita), liquido = n(d.liquido)
   const refQtd = n(d.reembolsos), refValor = n(d.reembolsos_valor), base = n(d.base), views = n(d.views)
@@ -68,9 +68,9 @@ export default async function UpsellPage({ searchParams }: { searchParams: Promi
 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <Card label="Taxa de conversão" value={base > 0 ? pct1(vendas, base) : '—'} sub={base > 0 ? `${int(vendas)} de ${int(base)} compradores` : 'sem base ainda'} accent={base > 0 ? (conv >= 0.1 ? 'var(--g)' : 'var(--o)') : 'var(--mute)'} />
-        <Card label="Visualizações" value={int(views)} sub="foram pra página do upsell" accent="var(--ink)" />
-        <Card label="Vendas do upsell" value={int(vendas)} sub="pedidos aprovados" accent="var(--g)" />
-        <Card label="Receita" value={brl0(receita)} sub="faturamento bruto" accent="var(--g)" />
+        <Card label="Visualizações" value={int(views)} sub={d.views_desde ? `medidas desde ${new Date(d.views_desde).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })}` : 'foram pra página do upsell'} accent="var(--ink)" />
+        <Card label="Vendas do upsell" value={int(vendas)} sub="líquidas · já sem reembolso e teste" accent="var(--g)" />
+        <Card label="Receita" value={brl0(receita)} sub="retida (sem devolução)" accent="var(--g)" />
         <Card label="Líquido" value={brl0(liquido)} sub="após taxas da Greenn" accent="var(--g)" />
         <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="receita ÷ vendas" accent="var(--g)" />
         <Card label="Compras do principal" value={int(base)} sub="Efeito Lipo (Greenn) · base da conversão" accent="var(--ink)" />

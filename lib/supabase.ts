@@ -94,6 +94,45 @@ export async function sbRpc<T = unknown>(fn: string, args: Record<string, unknow
   }
 }
 
+/**
+ * Chama uma RPC que devolve MUITAS linhas, paginando até o fim.
+ *
+ * O PostgREST corta a resposta em 1.000 linhas — em silêncio. A aba UTM caiu
+ * nessa: julho tem 1.350 vendas, ela recebia 1.000 e escondia R$ 20.503 (27% da
+ * receita). Pior, como a função ordena da mais recente para a mais antiga, o
+ * corte comia justamente os dias mais antigos, e o filtro "todo o período"
+ * devolvia os mesmos números do mês atual.
+ *
+ * Use quando a RPC devolve uma linha por registro. Se a função já agrega
+ * (dezenas de linhas), o sbRpc normal basta.
+ */
+export async function sbRpcAll<T = unknown>(fn: string, args: Record<string, unknown> = {}): Promise<T[]> {
+  if (!supabaseConfigured()) return []
+  const PAGE = 1000
+  const MAX = 100_000
+  const out: T[] = []
+  try {
+    for (let from = 0; from < MAX; from += PAGE) {
+      const res = await fetch(restUrl(`rpc/${fn}`), {
+        method: 'POST',
+        headers: headers({ 'Range-Unit': 'items', Range: `${from}-${from + PAGE - 1}` }),
+        body: JSON.stringify(args),
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        console.error(`[supabase] sbRpcAll ${fn} HTTP ${res.status}:`, await res.text().catch(() => ''))
+        break
+      }
+      const batch = (await res.json()) as T[]
+      out.push(...batch)
+      if (batch.length < PAGE) break
+    }
+  } catch (e) {
+    console.error('[supabase] sbRpcAll falhou:', e)
+  }
+  return out
+}
+
 /** Consulta linhas (querystring no padrão PostgREST). Nunca lança — retorna [] em falha. */
 export async function sbSelect<T = unknown>(table: string, query = ''): Promise<T[]> {
   if (!supabaseConfigured()) return []

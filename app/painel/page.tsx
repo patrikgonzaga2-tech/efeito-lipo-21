@@ -51,7 +51,11 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
   ])
 
   // Totais da marca (todos os gateways)
+  // vendas = PEDIDOS (dedup por cliente+dia) · itens = cada produto vendido.
+  // A tabela "por produto" soma itens; sem os dois nomes na tela, o leitor via
+  // 1.127 no card, somava a tabela e chegava em 1.350 sem entender por quê.
   const vendas = gateways.reduce((a, g) => a + N(g.vendas), 0)
+  const itens = gateways.reduce((a, g) => a + N(g.itens), 0)
   const receita = gateways.reduce((a, g) => a + N(g.receita), 0)
   const liquido = gateways.reduce((a, g) => a + N(g.liquido), 0)
   const reembolsos = gateways.reduce((a, g) => a + N(g.reembolsos), 0)
@@ -65,10 +69,14 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
   const receitaAds = N(canais.find((c) => c.canal === 'ads')?.receita)
   const roasAds = div(receitaAds, spend)
 
-  // ROAS TOTAL (blended): faturamento total da marca (todos os gateways, todas
-  // as origens) ÷ investimento total. Mede o retorno do negócio inteiro sobre o
-  // que foi investido — não só a fatia que veio de anúncio.
-  const roasTotal = div(receita, spend)
+  // ROAS TOTAL (blended): faturamento de AQUISIÇÃO ÷ investimento. Tira a
+  // recorrência (assinatura cobrada da base) do numerador — ela não foi comprada
+  // com o dinheiro do Meta. Com ela dentro, o card marcava 2,13x enquanto a
+  // aquisição real rendia 1,22x: R$ 27,5 mil de assinatura inflavam o retorno
+  // aparente do tráfego pago.
+  const receitaRecorrencia = N(canais.find((c) => c.canal === 'recorrencia')?.receita)
+  const receitaAquisicao = receita - receitaRecorrencia
+  const roasTotal = div(receitaAquisicao, spend)
 
   // Famílias (junta gateways): agrega por familia
   const famMap = new Map<string, { vendas: number; receita: number; liquido: number }>()
@@ -94,17 +102,17 @@ export default async function PainelGeralPage({ searchParams }: { searchParams: 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))' }}>
         <Card label="Faturamento" value={brl0(receita)} sub="bruto · todos os gateways" accent="var(--g)" />
         <Card label="Líquido" value={brl0(liquido)} sub="após taxas dos gateways" accent="var(--g)" />
-        <Card label="Vendas" value={int(vendas)} sub="pedidos (clientes)" accent="var(--g)" />
-        <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="faturamento ÷ vendas" />
+        <Card label="Pedidos" value={int(vendas)} sub={`${int(itens)} itens (com order bumps)`} accent="var(--g)" />
+        <Card label="Ticket médio" value={vendas > 0 ? brl(ticket) : '—'} sub="faturamento ÷ pedidos" />
         <Card label="Investido" value={brl0(spend)} sub="Meta Ads" />
         <Card label="Lucro" value={brl0(lucro)} sub="líquido − investido" accent={lucro >= 0 ? 'var(--g)' : '#c0392b'} />
         <Card label="ROAS de anúncios" value={spend > 0 ? roasAds.toFixed(2) + 'x' : '—'} sub="faturamento de ads ÷ investido" accent={spend > 0 ? (roasAds >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
-        <Card label="ROAS total" value={spend > 0 ? roasTotal.toFixed(2) + 'x' : '—'} sub="faturamento total ÷ investido (blended)" accent={spend > 0 ? (roasTotal >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
-        <Card label="Reembolsos" value={int(reembolsos)} sub={`${reembValor > 0 ? brl0(reembValor) + ' · ' : ''}${pct1(reembolsos, vendas + reembolsos)} das vendas`} accent="#c0392b" />
+        <Card label="ROAS total" value={spend > 0 ? roasTotal.toFixed(2) + 'x' : '—'} sub="aquisição ÷ investido (sem recorrência)" accent={spend > 0 ? (roasTotal >= 1 ? 'var(--g)' : '#c0392b') : 'var(--mute)'} />
+        <Card label="Reembolsos" value={int(reembolsos)} sub={`${reembValor > 0 ? brl0(reembValor) + ' · ' : ''}${pct1(reembolsos, itens)} dos itens`} accent="#c0392b" />
       </div>
 
       <div className="rounded-xl p-3 mt-4" style={{ fontSize: 12.5, background: 'rgba(245,113,0,.07)', color: 'var(--sub)', lineHeight: 1.55, border: '1px solid rgba(245,113,0,.18)' }}>
-        💡 Dois olhares sobre o retorno: o <strong>ROAS de anúncios</strong> usa só o faturamento que veio de anúncio ÷ investido — mede a eficiência pura do tráfego pago. O <strong>ROAS total</strong> (blended) usa o faturamento total da marca ÷ investido — inclui orgânico, comercial e WhatsApp, mostrando o retorno do negócio inteiro sobre o que foi investido (costuma ser bem maior). Greenn capturada desde <strong>25/06</strong>; Hotmart desde 19/06.
+        💡 <strong>Pedidos</strong> = clientes que compraram (quem leva o principal + 2 bumps conta 1). <strong>Itens</strong> = cada produto vendido — é o número que fecha com a tabela por produto abaixo. Sobre o retorno: o <strong>ROAS de anúncios</strong> divide só o faturamento que veio de anúncio pelo investido. O <strong>ROAS total</strong> divide toda a <strong>aquisição</strong> (inclui orgânico, comercial e direto) pelo investido — mas <strong>deixa a recorrência de fora</strong>: assinatura cobrada da base não foi comprada com o dinheiro do Meta, e somá-la fazia o retorno parecer quase o dobro do real. Greenn capturada desde <strong>25/06</strong>; Hotmart desde 19/06.
       </div>
 
       {/* Por gateway */}

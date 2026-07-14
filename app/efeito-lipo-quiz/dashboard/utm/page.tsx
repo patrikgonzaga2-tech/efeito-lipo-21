@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { sbRpc, supabaseConfigured } from '@/lib/supabase'
+import { sbRpcAll, supabaseConfigured } from '@/lib/supabase'
 import Login from '../_login'
 import { DashboardShell } from '../_shell'
 import { PeriodFilter, resolvePeriod, type SearchParams } from '../_period'
@@ -17,12 +17,16 @@ export default async function UtmPage({ searchParams }: { searchParams: Promise<
 
   const sp = await searchParams
   const { since, until, range, periodLabel } = resolvePeriod(sp)
-  const vendas = await sbRpc<VUtm>('vendas_utm', { p_since: since, p_until: until })
+  // sbRpcAll (e não sbRpc): a RPC devolve uma linha por venda e o PostgREST corta
+  // em 1.000 — julho tem 1.350, e a aba escondia R$ 20.503 (27% da receita) sem
+  // avisar. Como a ordem é da mais recente pra mais antiga, o corte comia os
+  // primeiros dias do mês, e "todo o período" repetia os números do mês atual.
+  const vendas = await sbRpcAll<VUtm>('vendas_utm', { p_since: since, p_until: until, p_sck: 'efeito-lipo-quiz' })
 
   return (
     <DashboardShell active="utm">
       <h1 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: 'var(--ink)', marginBottom: 4 }}>Origem das vendas (UTM)</h1>
-      <p style={{ fontSize: 13.5, color: 'var(--sub)', marginBottom: 18 }}>Vendas reais da Hotmart cruzadas com os UTMs do anúncio (pelo id do conjunto). Clique numa origem pra cruzar com as demais.</p>
+      <p style={{ fontSize: 13.5, color: 'var(--sub)', marginBottom: 18 }}>Vendas do <strong>funil do quiz</strong> (Hotmart + Greenn) cruzadas com os UTMs do anúncio, pelo id do conjunto. Clique numa origem pra cruzar com as demais. A assinatura da Comunidade fica fora — ela não tem UTM por natureza e aparecia aqui como se fosse rastreio perdido.</p>
       <PeriodFilter range={range} from={sp.from} to={sp.to} periodLabel={periodLabel} />
 
       <UtmExplorer vendas={vendas} />
