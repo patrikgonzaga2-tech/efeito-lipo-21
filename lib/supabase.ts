@@ -112,10 +112,15 @@ export async function sbRpcAll<T = unknown>(fn: string, args: Record<string, unk
   const MAX = 100_000
   const out: T[] = []
   try {
-    for (let from = 0; from < MAX; from += PAGE) {
-      const res = await fetch(restUrl(`rpc/${fn}`), {
+    for (let offset = 0; offset < MAX; offset += PAGE) {
+      // limit/offset vão na QUERYSTRING, não no header Range.
+      // O PostgREST ignora o Range em chamadas de função (POST /rpc/...), e a
+      // primeira versão disto usava Range: cada volta do laço trazia as MESMAS
+      // 1.000 linhas, o laço só parava no teto de 100.000, e a aba UTM exibiu
+      // "100.000 vendas · R$ 3.499.869" — as mesmas mil vendas repetidas 100x.
+      const res = await fetch(restUrl(`rpc/${fn}`, `limit=${PAGE}&offset=${offset}`), {
         method: 'POST',
-        headers: headers({ 'Range-Unit': 'items', Range: `${from}-${from + PAGE - 1}` }),
+        headers: headers(),
         body: JSON.stringify(args),
         cache: 'no-store',
       })
@@ -124,6 +129,7 @@ export async function sbRpcAll<T = unknown>(fn: string, args: Record<string, unk
         break
       }
       const batch = (await res.json()) as T[]
+      if (!Array.isArray(batch) || batch.length === 0) break
       out.push(...batch)
       if (batch.length < PAGE) break
     }
