@@ -81,20 +81,22 @@ const CSS = `
 .pc .hero .sub strong{color:#fff;font-weight:600}
 
 /* ---------- RETRATO (moldura em arco) ---------- */
-/* A foto é 1:1 e entra sem corte: o arco só arredonda o canto de cima, onde
-   há só o fundo claro do ateliê. A borda é um fio dourado com respiro branco
-   por dentro, no mesmo espírito dos círculos da lista de promessas. */
+/* A foto do chá é vertical (3:4). Em vez de mostrá-la inteira — o que deixaria
+   a moldura alta demais e empurraria o botão para fora da 1ª tela do celular —
+   ela é recortada numa janela quadrada (object-fit:cover) enquadrada no alto,
+   onde estão o rosto e o bolo "Bride"; a mesa de frutas do rodapé fica de fora. */
 /* O tamanho é limitado de propósito: como não há mais botão fixo no rodapé, o
    botão verde do topo é o único CTA da primeira tela — a foto não pode empurrar
    ele para fora dela. */
 .pc .portrait{
-  width:min(248px,62vw);margin:24px auto 0;padding:5px;
+  width:min(226px,56vw);margin:24px auto 0;padding:5px;
   border-radius:999px 999px 20px 20px;
   background:linear-gradient(160deg,var(--gold-soft),rgba(199,154,75,.45) 52%,var(--gold-soft));
   box-shadow:0 18px 44px rgba(0,0,0,.34);
 }
 .pc .portrait img{
   display:block;width:100%;height:auto;
+  aspect-ratio:1/1;object-fit:cover;object-position:center 14%;
   border-radius:999px 999px 15px 15px;
   border:2px solid rgba(255,255,255,.9);
 }
@@ -193,11 +195,11 @@ export default function Page() {
 
           <div className="portrait">
             <Image
-              src="/images/Foto-Pre-Casamento.jpg"
-              width={1080}
-              height={1080}
-              sizes="(min-width:721px) 248px, 62vw"
-              alt="Laüra Rosa sorrindo, provando o vestido de noiva"
+              src="/images/Foto-Cha-Noiva.jpg"
+              width={3120}
+              height={4160}
+              sizes="(min-width:721px) 226px, 56vw"
+              alt="Laüra Rosa sorrindo no seu chá de noiva, segurando o bolo escrito Bride"
               priority
             />
           </div>
@@ -218,9 +220,9 @@ export default function Page() {
           <div className="kick">O maior presente que eu já dei</div>
           <h2>Eu só caso uma vez. E essa condição também só existe uma vez.</h2>
           <p className="lead">
-            A Comunidade Corpo Feliz é onde as mulheres 30+ emagrecem de verdade, com
-            treinos hormonais de 30 minutinhos, comendo o que gostam. E é isso que eu
-            vou dar de presente.
+            A Comunidade Corpo Feliz é onde vivemos a jornada juntinhas, mulheres reais
+            que emagrecem com os treinos hormonais de até 30 minutinhos, em casa, sem
+            abrir mão de comer o que gosta. E é isso que eu vou te dar de presente.
           </p>
 
           <div className="promises">
@@ -231,7 +233,7 @@ export default function Page() {
                   <path d="M18.5 3.2c.25 1.7.6 2.3 2.3 2.6-1.7.25-2.05.9-2.3 2.6-.25-1.7-.6-2.35-2.3-2.6 1.7-.3 2.05-.9 2.3-2.6Z" />
                 </svg>
               </div>
-              <span><b>Braços magros</b> sem passar horas treinando</span>
+              <span><b>Braços magros</b> e sem flacidez</span>
             </div>
 
             <div className="promise">
@@ -255,7 +257,7 @@ export default function Page() {
                   <path d="M9.6 17.6c1-1.4 3.8-1.4 4.8 0" />
                 </svg>
               </div>
-              <span>Treinos hormonais de <b>30 min</b>, só 4x na semana, em casa ou na academia</span>
+              <span>Treinos hormonais de <b>até 30min</b>, sem sair de casa</span>
             </div>
 
             <div className="promise">
@@ -264,7 +266,7 @@ export default function Page() {
                   <path d="M12 20.3S3.8 15 3.8 8.9c0-2.6 2-4.4 4.2-4.4 1.7 0 3.1 1.1 4 2.5.9-1.4 2.3-2.5 4-2.5 2.2 0 4.2 1.8 4.2 4.4 0 6.1-8.2 11.4-8.2 11.4Z" />
                 </svg>
               </div>
-              <span>Comendo o que você gosta, <b>sem dieta maluca</b></span>
+              <span>Comendo o que gosta, plano alimentar flexível, <b>sem dieta restritiva</b></span>
             </div>
           </div>
         </div>
