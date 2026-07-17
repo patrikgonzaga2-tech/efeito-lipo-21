@@ -562,7 +562,7 @@ function Sales({ perfil, onCheckout }: { perfil: InnerProps['perfil']; onCheckou
         <li className="flex justify-between pt-2" style={{ borderTop: '1px solid rgba(0,0,0,.1)', fontSize: 14.5, fontWeight: 700 }}><span>Total real</span><span style={{ color: 'var(--mute)', textDecoration: 'line-through' }}>R$ 641</span></li>
         <li className="flex justify-between items-baseline pt-2 font-display"><span style={{ fontSize: 16, fontWeight: 800 }}>Hoje</span><span style={{ fontSize: 30, fontWeight: 800, color: 'var(--o)' }}>R$ 37</span></li>
       </ul>
-      <p className="text-center" style={{ fontSize: 13, color: 'var(--sub)', marginTop: 6 }}>ou 5x de R$ 8,19</p>
+      <p className="text-center" style={{ fontSize: 13, color: 'var(--sub)', marginTop: 6 }}>ou 6x de R$ 6,92</p>
     </div>
   )
 
